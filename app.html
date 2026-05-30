@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Team Generator App</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="app-page">
+    <header class="topbar">
+        <a class="brand" href="index.html">Sports Team Generator</a>
+        <a class="btn btn-secondary" href="index.html">Back Home</a>
+    </header>
+
+    <main class="app-shell">
+        <section class="page-intro fade-in">
+            <p class="eyebrow">Main App</p>
+            <h1>Create balanced teams</h1>
+            <p>Add players, manage the list, and split everyone into two evenly rated teams.</p>
+        </section>
+
+        <section class="card fade-in">
+            <div class="card__header">
+                <h2>Match Configuration</h2>
+                <p>Choose the sport and match format before generating teams.</p>
+            </div>
+
+            <div class="config-grid">
+                <div class="selector-block">
+                    <span class="selector-label">Sport</span>
+                    <div class="option-pills" id="sport-selector" role="group" aria-label="Select sport">
+                        <button class="option-pill is-selected" type="button" data-config-key="sport"
+                            data-value="cricket">Cricket</button>
+                        <button class="option-pill" type="button" data-config-key="sport"
+                            data-value="football">Football</button>
+                        <button class="option-pill" type="button" data-config-key="sport"
+                            data-value="badminton">Badminton</button>
+                        <button class="option-pill" type="button" data-config-key="sport"
+                            data-value="athletics">Athletics</button>
+                        <button class="option-pill" type="button" data-config-key="sport"
+                            data-value="custom">Custom</button>
+                    </div>
+                </div>
+
+                <div id="sport-mode-block" class="selector-block">
+                    <span class="selector-label">Mode</span>
+                    <div class="option-pills" id="sport-mode-selector" role="group" aria-label="Select sport mode">
+                    </div>
+                </div>
+
+                <div class="selector-block">
+                    <span class="selector-label">Match Type</span>
+                    <div class="option-pills" id="match-type-selector" role="group" aria-label="Select match type">
+                        <button class="option-pill is-selected" type="button" data-config-key="matchType"
+                            data-value="Friendly">Friendly</button>
+                        <button class="option-pill" type="button" data-config-key="matchType"
+                            data-value="Knockout">Knockout</button>
+                        <button class="option-pill" type="button" data-config-key="matchType"
+                            data-value="League">League</button>
+                    </div>
+                </div>
+
+                <div class="selector-block">
+                    <span class="selector-label">Required Team Size</span>
+                    <div id="team-size-display" class="config-display-pill">11 players per team</div>
+                </div>
+
+                <div id="custom-sport-settings" class="selector-block custom-settings-panel" aria-hidden="true">
+                    <div class="custom-settings-grid">
+                        <label class="field field--stacked" for="players-per-team">
+                            <span class="selector-label">Players per Team</span>
+                            <input type="number" id="players-per-team" min="1" max="20" value="5">
+                        </label>
+
+                        <label class="field field--stacked" for="team-count">
+                            <span class="selector-label">Number of Teams</span>
+                            <input type="number" id="team-count" min="2" max="8" value="2">
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div id="config-message" class="status-message hidden" role="alert" aria-live="polite"></div>
+        </section>
+
+        <section class="grid-layout">
+            <article class="card">
+                <div class="card__header">
+                    <h2>Player Input</h2>
+                    <p>Add a player name and rating from 1 to 10.</p>
+                </div>
+
+                <div class="player-input-panel">
+                    <label class="field field--floating">
+                        <input type="text" id="name" placeholder=" ">
+                        <span>Player Name</span>
+                    </label>
+
+                    <div class="rating-panel">
+                        <div class="rating-panel__top">
+                            <span class="selector-label">Rating</span>
+                            <div class="rating-display">
+                                <span id="rating-value" class="rating-value">5</span>
+                                <span id="rating-level"
+                                    class="rating-level rating-level--intermediate">Intermediate</span>
+                            </div>
+                        </div>
+                        <label class="slider-field" for="rating">
+                            <span class="sr-only">Player rating from 1 to 10</span>
+                            <input type="range" id="rating" min="1" max="10" value="5">
+                            <div class="slider-scale" aria-hidden="true">
+                                <span>1</span>
+                                <span>10</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="actions">
+                    <button class="btn btn-primary" id="add-player-btn" type="button">Add Player</button>
+                    <button class="btn btn-secondary" id="clear-players-btn" type="button">Clear All Players</button>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card__header">
+                    <h2>Player List</h2>
+                    <p>Saved automatically in your browser.</p>
+                </div>
+                <div id="players-empty-state" class="empty-state">
+                    No players added yet. Start by adding a few names above.
+                </div>
+                <ul id="players-list" class="player-list"></ul>
+            </article>
+        </section>
+
+        <section class="card fade-in">
+            <div class="card__header">
+                <h2>Import Players (CSV)</h2>
+                <p>Upload a CSV file to add multiple players at once.</p>
+            </div>
+
+            <div class="import-panel">
+                <label class="field field--file" for="csv-file">
+                    <span class="selector-label">CSV File</span>
+                    <input type="file" id="csv-file" accept=".csv,text/csv">
+                </label>
+
+                <div class="actions">
+                    <button class="btn btn-primary" id="import-csv-btn" type="button" disabled>Import CSV</button>
+                    <button class="btn btn-secondary" id="toggle-instructions-btn" type="button" aria-expanded="false"
+                        aria-controls="csv-instructions">View Instructions</button>
+                </div>
+
+                <div id="csv-import-message" class="status-message hidden" role="status" aria-live="polite"></div>
+
+                <section id="csv-instructions" class="instructions-panel hidden"
+                    aria-labelledby="csv-instructions-title">
+                    <h3 id="csv-instructions-title">CSV Format Instructions</h3>
+                    <p>Format the file with a header row followed by one player per line.</p>
+                    <pre class="instructions-code">name,rating
+John,8
+Alex,6
+Sam,9</pre>
+                    <ul class="instructions-list">
+                        <li>First row must be headers: <code>name</code>, <code>rating</code></li>
+                        <li>Rating must be a number from 1 to 10</li>
+                        <li>Do not include empty rows</li>
+                    </ul>
+                </section>
+            </div>
+        </section>
+
+        <section class="card card--action">
+            <div class="card__header">
+                <h2>Generate Teams</h2>
+                <p>Create two balanced teams based on player ratings.</p>
+            </div>
+            <button class="btn btn-primary btn-large" id="generate-teams-btn" type="button">Generate Teams</button>
+        </section>
+
+        <section class="grid-layout">
+            <article class="card">
+                <div class="card__header">
+                    <h2>Tournament Manager</h2>
+                    <p>Name the current tournament and save the full setup to your browser.</p>
+                </div>
+
+                <div class="tournament-manager">
+                    <label class="field field--floating">
+                        <input type="text" id="tournament-name" placeholder=" ">
+                        <span>Tournament Name</span>
+                    </label>
+
+                    <div class="actions actions--tight">
+                        <button class="btn btn-primary" id="save-tournament-btn" type="button">Save Tournament</button>
+                        <button class="btn btn-secondary" id="export-pdf-btn" type="button">Export Tournament PDF</button>
+                    </div>
+
+                    <div id="tournament-save-message" class="status-message hidden" role="status" aria-live="polite"></div>
+                </div>
+            </article>
+
+            <article class="card">
+                <div class="card__header">
+                    <h2>Saved Tournaments</h2>
+                    <p>Load a previous tournament or remove old entries.</p>
+                </div>
+
+                <div id="saved-tournaments-empty-state" class="empty-state">
+                    No tournaments saved yet. Generate teams, add a name, and save one here.
+                </div>
+                <div id="saved-tournaments-list" class="saved-tournaments-list"></div>
+            </article>
+        </section>
+
+        <section class="results-section">
+            <div class="card__header">
+                <h2>Team Results</h2>
+                <p>Teams will appear side by side once generated.</p>
+            </div>
+            <div id="config-summary" class="config-summary hidden"></div>
+            <div id="teams-empty-state" class="empty-state">
+                Add at least two players and generate teams to see the result.
+            </div>
+            <div id="teams" class="teams-grid"></div>
+        </section>
+
+        <section id="match-details-section" class="results-section hidden">
+            <div class="card__header">
+                <h2>Match Details</h2>
+                <p>Generated fixture based on the current teams and selected match type.</p>
+            </div>
+            <div id="matches" class="matches-grid"></div>
+        </section>
+
+        <section id="tournament-bracket-section" class="results-section hidden">
+            <div class="card__header">
+                <h2>Tournament Bracket</h2>
+                <p>Visual bracket view with live scores and winner progression.</p>
+            </div>
+            <div id="tournament-bracket" class="bracket-board"></div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

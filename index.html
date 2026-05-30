@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports Team Generator | Premium Landing</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="marketing-page">
+    <div class="page-backdrop" aria-hidden="true">
+        <div class="page-backdrop__gradient"></div>
+        <div class="page-backdrop__glow page-backdrop__glow--left"></div>
+        <div class="page-backdrop__glow page-backdrop__glow--right"></div>
+        <div class="page-backdrop__grid"></div>
+        <div class="page-backdrop__sports"></div>
+    </div>
+
+    <header class="marketing-nav reveal">
+        <a class="marketing-brand" href="index.html">Sports Team Generator</a>
+        <nav class="marketing-nav__links" aria-label="Primary">
+            <a href="#features">Features</a>
+            <a href="#preview">Preview</a>
+            <a class="btn btn-secondary" href="app.html">Open App</a>
+        </nav>
+    </header>
+
+    <main>
+        <section class="hero" id="top">
+            <div class="hero__content reveal">
+                <p class="eyebrow">Tournament workflow, reimagined</p>
+                <h1>Build Teams. Run Tournaments. In Seconds.</h1>
+                <p class="hero__text">
+                    Generate balanced teams, create brackets, manage tournaments, import CSV files,
+                    and export results instantly.
+                </p>
+
+                <div class="hero__actions">
+                    <a class="btn btn-primary" href="app.html">Start Creating</a>
+                    <a class="btn btn-secondary" href="#features">View Features</a>
+                </div>
+
+                <div class="hero__metrics">
+                    <article class="metric-pill">
+                        <strong>CSV-ready</strong>
+                        <span>Bulk import players in a click</span>
+                    </article>
+                    <article class="metric-pill">
+                        <strong>Live brackets</strong>
+                        <span>Track scores and winners in real time</span>
+                    </article>
+                    <article class="metric-pill">
+                        <strong>PDF exports</strong>
+                        <span>Share polished tournament reports fast</span>
+                    </article>
+                </div>
+            </div>
+
+            <div class="hero__preview reveal" id="preview">
+                <div class="app-frame">
+                    <div class="app-frame__chrome">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+
+                    <div class="app-frame__body">
+                        <aside class="app-frame__sidebar">
+                            <div class="sidebar-card sidebar-card--accent">
+                                <span class="sidebar-card__label">Tournament</span>
+                                <strong>City Cup Finals</strong>
+                                <small>Knockout</small>
+                            </div>
+                            <div class="sidebar-card">
+                                <span class="sidebar-card__label">Players</span>
+                                <strong>22 imported</strong>
+                                <small>Balanced into 2 teams</small>
+                            </div>
+                            <div class="sidebar-card">
+                                <span class="sidebar-card__label">Export</span>
+                                <strong>PDF Ready</strong>
+                                <small>Shareable summary file</small>
+                            </div>
+                        </aside>
+
+                        <section class="app-frame__panel">
+                            <div class="panel-card panel-card--highlight">
+                                <div class="panel-card__header">
+                                    <div>
+                                        <span class="panel-tag">Balanced Teams</span>
+                                        <h2>Final Match Setup</h2>
+                                    </div>
+                                    <span class="panel-badge">Live</span>
+                                </div>
+
+                                <div class="team-split">
+                                    <article class="team-box">
+                                        <span class="team-box__title">Falcons</span>
+                                        <strong>48 Rating</strong>
+                                        <ul>
+                                            <li>Arjun (9)</li>
+                                            <li>Dev (8)</li>
+                                            <li>Karan (7)</li>
+                                        </ul>
+                                    </article>
+                                    <article class="team-box">
+                                        <span class="team-box__title">Titans</span>
+                                        <strong>47 Rating</strong>
+                                        <ul>
+                                            <li>Ravi (9)</li>
+                                            <li>Imran (8)</li>
+                                            <li>Neel (7)</li>
+                                        </ul>
+                                    </article>
+                                </div>
+                            </div>
+
+                            <div class="panel-grid">
+                                <article class="panel-card">
+                                    <div class="panel-card__header panel-card__header--compact">
+                                        <h3>Fixtures</h3>
+                                        <span class="panel-badge panel-badge--ghost">3 Matches</span>
+                                    </div>
+                                    <div class="fixture-row">
+                                        <span>Falcons vs Titans</span>
+                                        <strong>12 - 10</strong>
+                                    </div>
+                                    <div class="fixture-row">
+                                        <span>Winner moves to Final</span>
+                                        <strong>Bracket</strong>
+                                    </div>
+                                </article>
+
+                                <article class="panel-card">
+                                    <div class="panel-card__header panel-card__header--compact">
+                                        <h3>Saved State</h3>
+                                        <span class="panel-badge panel-badge--success">Auto</span>
+                                    </div>
+                                    <div class="save-chip-row">
+                                        <span class="save-chip">Local Save</span>
+                                        <span class="save-chip">Team Names</span>
+                                        <span class="save-chip">Scores</span>
+                                        <span class="save-chip">Winners</span>
+                                    </div>
+                                </article>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="features-section reveal" id="features">
+            <div class="section-heading">
+                <p class="eyebrow">Core features</p>
+                <h2>Everything You Need To Run Tournaments</h2>
+                <p>
+                    From roster imports to polished exports, every step is designed to keep match-day
+                    operations fast, organized, and effortless.
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <article class="feature-card">
+                    <div class="feature-icon" aria-hidden="true">SB</div>
+                    <span class="feature-card__eyebrow">Automation</span>
+                    <h3>Smart Team Balancing</h3>
+                    <p>Automatically generate balanced teams using player ratings.</p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" aria-hidden="true">TB</div>
+                    <span class="feature-card__eyebrow">Competition</span>
+                    <h3>Tournament Brackets</h3>
+                    <p>Create knockout and league-style tournaments instantly.</p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" aria-hidden="true">CSV</div>
+                    <span class="feature-card__eyebrow">Import</span>
+                    <h3>CSV Import</h3>
+                    <p>Upload player lists directly from spreadsheets.</p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" aria-hidden="true">PDF</div>
+                    <span class="feature-card__eyebrow">Export</span>
+                    <h3>PDF Export</h3>
+                    <p>Download tournament reports and results.</p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" aria-hidden="true">MS</div>
+                    <span class="feature-card__eyebrow">Coverage</span>
+                    <h3>Multi-Sport Support</h3>
+                    <p>Support for cricket, football, badminton, athletics, and custom formats.</p>
+                </article>
+
+                <article class="feature-card">
+                    <div class="feature-icon" aria-hidden="true">CT</div>
+                    <span class="feature-card__eyebrow">Flexibility</span>
+                    <h3>Custom Team Configuration</h3>
+                    <p>Create your own tournament rules and team sizes.</p>
+                </article>
+            </div>
+        </section>
+
+        <section class="showcase-section" id="showcase">
+            <div class="section-heading reveal">
+                <p class="eyebrow">Product showcase</p>
+                <h2>See The Platform In Action</h2>
+                <p>
+                    Explore the key workflows your organizers and players move through, from balanced
+                    team creation to final match summaries.
+                </p>
+            </div>
+
+            <div class="showcase-stack">
+                <article class="showcase-row reveal">
+                    <div class="showcase-shot">
+                        <div class="shot-frame">
+                            <div class="shot-frame__chrome">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="shot-frame__body shot-frame__body--teams">
+                                <div class="shot-stat">
+                                    <span>Sport</span>
+                                    <strong>Cricket</strong>
+                                </div>
+                                <div class="shot-columns">
+                                    <div class="shot-team">
+                                        <h3>Falcons</h3>
+                                        <p>Total Rating 48</p>
+                                        <ul>
+                                            <li>Arjun 9</li>
+                                            <li>Dev 8</li>
+                                            <li>Karan 7</li>
+                                        </ul>
+                                    </div>
+                                    <div class="shot-team">
+                                        <h3>Titans</h3>
+                                        <p>Total Rating 47</p>
+                                        <ul>
+                                            <li>Ravi 9</li>
+                                            <li>Imran 8</li>
+                                            <li>Neel 7</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="showcase-copy">
+                        <span class="feature-card__eyebrow">01</span>
+                        <h3>Team Generation</h3>
+                        <p>
+                            Instantly turn a player list into evenly balanced squads with clear rating
+                            totals, editable team names, and a polished summary view.
+                        </p>
+                    </div>
+                </article>
+
+                <article class="showcase-row showcase-row--reverse reveal">
+                    <div class="showcase-shot">
+                        <div class="shot-frame">
+                            <div class="shot-frame__chrome">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="shot-frame__body shot-frame__body--bracket">
+                                <div class="bracket-column">
+                                    <span>Round 1</span>
+                                    <div class="bracket-node">Falcons 12</div>
+                                    <div class="bracket-node">Titans 10</div>
+                                </div>
+                                <div class="bracket-column">
+                                    <span>Semi</span>
+                                    <div class="bracket-node bracket-node--winner">Falcons</div>
+                                    <div class="bracket-link"></div>
+                                </div>
+                                <div class="bracket-column">
+                                    <span>Final</span>
+                                    <div class="bracket-node bracket-node--winner">Champions</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="showcase-copy">
+                        <span class="feature-card__eyebrow">02</span>
+                        <h3>Tournament Brackets</h3>
+                        <p>
+                            Run knockout and league flows with a visual bracket that keeps progression,
+                            winners, and the path to the championship easy to follow.
+                        </p>
+                    </div>
+                </article>
+
+                <article class="showcase-row reveal">
+                    <div class="showcase-shot">
+                        <div class="shot-frame">
+                            <div class="shot-frame__chrome">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="shot-frame__body shot-frame__body--csv">
+                                <div class="csv-table">
+                                    <div class="csv-table__header">
+                                        <span>Name</span>
+                                        <span>Rating</span>
+                                    </div>
+                                    <div class="csv-table__row"><span>John</span><strong>8</strong></div>
+                                    <div class="csv-table__row"><span>Alex</span><strong>6</strong></div>
+                                    <div class="csv-table__row"><span>Sam</span><strong>9</strong></div>
+                                </div>
+                                <div class="csv-dropzone">
+                                    <span>Drop CSV File</span>
+                                    <strong>22 Players Ready</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="showcase-copy">
+                        <span class="feature-card__eyebrow">03</span>
+                        <h3>CSV Import</h3>
+                        <p>
+                            Bring in player rosters from spreadsheets without manual re-entry and keep
+                            setup time short even for larger tournaments.
+                        </p>
+                    </div>
+                </article>
+
+                <article class="showcase-row showcase-row--reverse reveal">
+                    <div class="showcase-shot">
+                        <div class="shot-frame">
+                            <div class="shot-frame__chrome">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="shot-frame__body shot-frame__body--results">
+                                <div class="result-summary">
+                                    <span>Final Result</span>
+                                    <strong>Falcons 12 - 10 Titans</strong>
+                                </div>
+                                <div class="result-list">
+                                    <div class="result-list__item">
+                                        <span>Winner</span>
+                                        <strong>Falcons</strong>
+                                    </div>
+                                    <div class="result-list__item">
+                                        <span>Champion</span>
+                                        <strong>City Cup Finals</strong>
+                                    </div>
+                                    <div class="result-list__item">
+                                        <span>Export</span>
+                                        <strong>PDF Ready</strong>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="showcase-copy">
+                        <span class="feature-card__eyebrow">04</span>
+                        <h3>Match Results</h3>
+                        <p>
+                            Capture scores, declare winners, and finish with a shareable tournament
+                            summary that feels presentation-ready the moment the match ends.
+                        </p>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="final-cta reveal" id="launch">
+            <div class="final-cta__glow" aria-hidden="true"></div>
+            <div class="final-cta__content">
+                <p class="eyebrow">Get started</p>
+                <h2>Ready To Organize Your Next Tournament?</h2>
+                <p>Generate teams, create brackets, and run competitions in minutes.</p>
+                <a class="btn btn-primary" href="app.html">Launch Tournament</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer reveal">
+        <div class="site-footer__brand">
+            <strong>Sports Team Generator</strong>
+            <span>Built for faster tournament setup and smoother competition management.</span>
+        </div>
+        <nav class="site-footer__nav" aria-label="Footer">
+            <a href="https://github.com">GitHub</a>
+            <a href="mailto:contact@example.com">Contact</a>
+            <a href="#top">About</a>
+        </nav>
+    </footer>
+
+    <script>
+        function revealOnScroll() {
+            const revealItems = document.querySelectorAll(".reveal");
+
+            if (revealItems.length === 0) {
+                return;
+            }
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (!entry.isIntersecting) {
+                        return;
+                    }
+
+                    entry.target.classList.add("is-visible");
+                    observer.unobserve(entry.target);
+                });
+            }, {
+                threshold: 0.18
+            });
+
+            revealItems.forEach((item, index) => {
+                item.style.transitionDelay = `${index * 90}ms`;
+                observer.observe(item);
+            });
+        }
+
+        function bindSmoothButtons() {
+            const featureButtons = document.querySelectorAll('a[href="#features"]');
+
+            if (featureButtons.length === 0) {
+                return;
+            }
+
+            featureButtons.forEach((featureButton) => {
+                featureButton.addEventListener("click", (event) => {
+                    event.preventDefault();
+
+                    document.getElementById("features")?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                    });
+                });
+            });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            revealOnScroll();
+            bindSmoothButtons();
+        });
+    </script>
+</body>
+
+</html>
