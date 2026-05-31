@@ -99,6 +99,8 @@ function getAppElements() {
         teamsContainer: document.getElementById("teams"),
         teamsEmptyState: document.getElementById("teams-empty-state"),
         matchesContainer: document.getElementById("matches"),
+        statisticsOverview: document.getElementById("statistics-overview"),
+        statisticsTeamAnalytics: document.getElementById("statistics-team-analytics"),
         saveTournamentMessage: document.getElementById("tournament-save-message"),
         savedTournamentsList: document.getElementById("saved-tournaments-list"),
         savedTournamentsEmptyState: document.getElementById("saved-tournaments-empty-state"),
@@ -405,6 +407,201 @@ function getTournamentDisplayName() {
     return getAppElements().tournamentNameInput?.value.trim() || "Untitled Tournament";
 }
 
+function getBalanceStatus(balanceDifference) {
+    if (balanceDifference <= 1) {
+        return {
+            label: "Excellent Balance",
+            className: "stat-card__badge--excellent"
+        };
+    }
+
+    if (balanceDifference <= 4) {
+        return {
+            label: "Good Balance",
+            className: "stat-card__badge--good"
+        };
+    }
+
+    return {
+        label: "Needs Improvement",
+        className: "stat-card__badge--warning"
+    };
+}
+
+function calculateTournamentStatistics() {
+    const totalPlayers = players.length;
+    const totalTeams = latestGeneratedTeams.length;
+    const totalPlayerRating = players.reduce((sum, player) => sum + player.rating, 0);
+    const averagePlayerRating = totalPlayers > 0 ? (totalPlayerRating / totalPlayers).toFixed(1) : "0.0";
+    const highestRatedPlayer = totalPlayers > 0
+        ? players.reduce((highest, player) => (player.rating > highest.rating ? player : highest), players[0])
+        : null;
+    const lowestRatedPlayer = totalPlayers > 0
+        ? players.reduce((lowest, player) => (player.rating < lowest.rating ? player : lowest), players[0])
+        : null;
+    const strongestTeam = totalTeams > 0
+        ? latestGeneratedTeams.reduce((strongest, team) => (team.total > strongest.total ? team : strongest), latestGeneratedTeams[0])
+        : null;
+    const weakestTeam = totalTeams > 0
+        ? latestGeneratedTeams.reduce((weakest, team) => (team.total < weakest.total ? team : weakest), latestGeneratedTeams[0])
+        : null;
+    const balanceDifference = strongestTeam && weakestTeam ? strongestTeam.total - weakestTeam.total : 0;
+    const totalMatchesGenerated = latestTournament?.rounds
+        ? latestTournament.rounds.reduce((sum, round) => sum + round.matches.length, 0)
+        : 0;
+
+    return {
+        totalPlayers,
+        totalTeams,
+        averagePlayerRating,
+        highestRatedPlayer,
+        lowestRatedPlayer,
+        strongestTeam,
+        weakestTeam,
+        balanceDifference,
+        balanceStatus: getBalanceStatus(balanceDifference),
+        totalMatchesGenerated
+    };
+}
+
+function createStatisticsCard(icon, label, value, detail, badgeMarkup = "") {
+    return `
+        <article class="stat-card">
+            <div class="stat-card__top">
+                <div>
+                    <p class="stat-card__label">${label}</p>
+                    <h3 class="stat-card__value">${value}</h3>
+                </div>
+                <span class="stat-card__icon" aria-hidden="true">${icon}</span>
+            </div>
+            <div class="stat-card__detail">${detail}</div>
+            ${badgeMarkup}
+        </article>
+    `;
+}
+
+function createTeamAnalyticsCard(team, icon, roleLabel, statusDetail) {
+    const averageTeamRating = team.players.length > 0 ? (team.total / team.players.length).toFixed(1) : "0.0";
+
+    return `
+        <article class="team-analytics-card">
+            <div class="team-analytics-card__top">
+                <div>
+                    <p class="team-analytics-card__label">${roleLabel}</p>
+                    <h3 class="team-analytics-card__title">${getTeamDisplayName(team)}</h3>
+                </div>
+                <span class="team-analytics-card__icon" aria-hidden="true">${icon}</span>
+            </div>
+            <div class="team-analytics-card__detail">${statusDetail}</div>
+            <div class="team-analytics-list">
+                <div class="team-analytics-list__row">
+                    <span>Team Rating Total</span>
+                    <strong>${team.total}</strong>
+                </div>
+                <div class="team-analytics-list__row">
+                    <span>Average Team Rating</span>
+                    <strong>${averageTeamRating}</strong>
+                </div>
+                <div class="team-analytics-list__row">
+                    <span>Players</span>
+                    <strong>${team.players.length}</strong>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
+function renderStatisticsDashboard() {
+    const { statisticsOverview, statisticsTeamAnalytics } = getAppElements();
+
+    if (!statisticsOverview || !statisticsTeamAnalytics) {
+        return;
+    }
+
+    const statistics = calculateTournamentStatistics();
+    const highestRatedPlayerText = statistics.highestRatedPlayer
+        ? `${statistics.highestRatedPlayer.name} (${statistics.highestRatedPlayer.rating})`
+        : "No players yet";
+    const lowestRatedPlayerText = statistics.lowestRatedPlayer
+        ? `${statistics.lowestRatedPlayer.name} (${statistics.lowestRatedPlayer.rating})`
+        : "No players yet";
+    const strongestTeamName = statistics.strongestTeam ? getTeamDisplayName(statistics.strongestTeam) : "No teams yet";
+    const weakestTeamName = statistics.weakestTeam ? getTeamDisplayName(statistics.weakestTeam) : "No teams yet";
+
+    statisticsOverview.innerHTML = `
+        ${createStatisticsCard("PL", "Total Players", statistics.totalPlayers, "Current players available for selection")}
+        ${createStatisticsCard("TM", "Total Teams", statistics.totalTeams, "Generated teams in the active tournament")}
+        ${createStatisticsCard("AR", "Average Player Rating", statistics.averagePlayerRating, "Average across the current player pool")}
+        ${createStatisticsCard("HP", "Highest Rated Player", statistics.highestRatedPlayer ? statistics.highestRatedPlayer.rating : "-", highestRatedPlayerText)}
+        ${createStatisticsCard("LP", "Lowest Rated Player", statistics.lowestRatedPlayer ? statistics.lowestRatedPlayer.rating : "-", lowestRatedPlayerText)}
+        ${createStatisticsCard(
+            "BS",
+            "Tournament Balance Score",
+            statistics.balanceDifference,
+            `Rating difference between ${strongestTeamName} and ${weakestTeamName}`,
+            `<span class="stat-card__badge ${statistics.balanceStatus.className}">${statistics.balanceStatus.label}</span>`
+        )}
+        ${createStatisticsCard("MG", "Total Matches Generated", statistics.totalMatchesGenerated, "Bracket and fixture matches currently created")}
+    `;
+
+    if (statistics.strongestTeam && statistics.weakestTeam) {
+        statisticsTeamAnalytics.innerHTML = `
+            ${createTeamAnalyticsCard(
+                statistics.strongestTeam,
+                "ST",
+                "Strongest Team",
+                `${strongestTeamName} currently has the highest total rating.`
+            )}
+            ${createTeamAnalyticsCard(
+                statistics.weakestTeam,
+                "WT",
+                "Weakest Team",
+                `${weakestTeamName} currently has the lowest total rating.`
+            )}
+            <article class="team-analytics-card">
+                <div class="team-analytics-card__top">
+                    <div>
+                        <p class="team-analytics-card__label">Balance Analysis</p>
+                        <h3 class="team-analytics-card__title">${statistics.balanceStatus.label}</h3>
+                    </div>
+                    <span class="team-analytics-card__icon" aria-hidden="true">BA</span>
+                </div>
+                <div class="team-analytics-card__detail">Live comparison of team strength based on total ratings.</div>
+                <div class="team-analytics-list">
+                    <div class="team-analytics-list__row">
+                        <span>Strongest Team</span>
+                        <strong>${strongestTeamName}</strong>
+                    </div>
+                    <div class="team-analytics-list__row">
+                        <span>Weakest Team</span>
+                        <strong>${weakestTeamName}</strong>
+                    </div>
+                    <div class="team-analytics-list__row">
+                        <span>Rating Difference</span>
+                        <strong>${statistics.balanceDifference}</strong>
+                    </div>
+                </div>
+            </article>
+        `;
+        return;
+    }
+
+    statisticsTeamAnalytics.innerHTML = `
+        <article class="team-analytics-card">
+            <div class="team-analytics-card__top">
+                <div>
+                    <p class="team-analytics-card__label">Team Analytics</p>
+                    <h3 class="team-analytics-card__title">Generate teams to unlock analytics</h3>
+                </div>
+                <span class="team-analytics-card__icon" aria-hidden="true">TA</span>
+            </div>
+            <div class="team-analytics-card__detail">
+                Team totals, averages, strongest and weakest team comparisons, and balance analysis will appear here once teams are generated.
+            </div>
+        </article>
+    `;
+}
+
 function updateImportButtonState() {
     const { csvFileInput, importCsvButton } = getAppElements();
 
@@ -509,6 +706,7 @@ function handleCsvImport() {
         savePlayers();
         renderPlayers();
         clearTeams();
+        renderStatisticsDashboard();
         showImportMessage(`Imported ${importedPlayers.length} player${importedPlayers.length === 1 ? "" : "s"} successfully.`, "success");
         csvFileInput.value = "";
         updateImportButtonState();
@@ -655,6 +853,7 @@ function addPlayer() {
     savePlayers();
     renderPlayers();
     clearTeams();
+    renderStatisticsDashboard();
 
     nameInput.value = "";
     ratingInput.value = "5";
@@ -671,6 +870,7 @@ function deletePlayer(playerId) {
         savePlayers();
         renderPlayers();
         clearTeams();
+        renderStatisticsDashboard();
         return;
     }
 
@@ -681,6 +881,7 @@ function deletePlayer(playerId) {
         savePlayers();
         renderPlayers();
         clearTeams();
+        renderStatisticsDashboard();
     }, 220);
 }
 
@@ -693,6 +894,7 @@ function clearPlayers() {
     savePlayers();
     renderPlayers();
     clearTeams();
+    renderStatisticsDashboard();
 }
 
 function renderPlayers() {
@@ -922,6 +1124,7 @@ function loadTournament(tournamentId) {
         clearTeams();
     }
 
+    renderStatisticsDashboard();
     showTournamentSaveMessage(`Loaded "${savedTournament.name}".`, "success");
 }
 
@@ -1653,6 +1856,7 @@ function renderTeams(generatedTeams, options = {}) {
     });
 
     renderMatches(generatedTeams);
+    renderStatisticsDashboard();
 }
 
 function clearTeams() {
@@ -1688,6 +1892,7 @@ function clearTeams() {
     bracketSection.classList.add("hidden");
     latestGeneratedTeams = [];
     latestTournament = null;
+    renderStatisticsDashboard();
 }
 
 function bindEvents() {
@@ -1803,6 +2008,7 @@ function initializeApp() {
     renderSavedTournaments();
     clearTournamentSaveMessage();
     clearTeams();
+    renderStatisticsDashboard();
 }
 
 initializeApp();

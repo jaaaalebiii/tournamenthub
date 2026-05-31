@@ -12,6 +12,62 @@
     --secondary: #203554;
     --danger: #ff6b6b;
     --shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+    --bg-gradient-main:
+        radial-gradient(circle at top left, rgba(82, 224, 161, 0.18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(68, 127, 255, 0.2), transparent 28%),
+        linear-gradient(135deg, #040b14 0%, #08111f 45%, #0d1830 100%);
+    --marketing-bg:
+        radial-gradient(circle at 18% 18%, rgba(89, 230, 171, 0.11), transparent 24%),
+        radial-gradient(circle at 85% 22%, rgba(89, 167, 255, 0.12), transparent 24%),
+        linear-gradient(180deg, #020914 0%, #071321 48%, #09192c 100%);
+    --marketing-surface: rgba(10, 21, 38, 0.76);
+    --marketing-surface-strong: rgba(12, 27, 46, 0.94);
+    --marketing-muted: #99adc7;
+    --marketing-grid-line: rgba(255, 255, 255, 0.035);
+    --theme-toggle-bg: rgba(255, 255, 255, 0.08);
+    --theme-toggle-border: rgba(255, 255, 255, 0.1);
+    --theme-toggle-thumb: linear-gradient(135deg, #52e0a1, #5ba6ff);
+    --theme-toggle-icon: #dce7f7;
+    --theme-toggle-icon-muted: rgba(220, 231, 247, 0.55);
+    --input-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+    --card-bg: var(--surface);
+    --page-backdrop-filter: blur(20px);
+}
+
+:root[data-theme="light"] {
+    --bg: #eef3f9;
+    --bg-alt: #ffffff;
+    --surface: rgba(255, 255, 255, 0.86);
+    --surface-strong: #ffffff;
+    --surface-soft: rgba(15, 23, 42, 0.04);
+    --border: rgba(15, 23, 42, 0.1);
+    --text: #132033;
+    --muted: #5d6f87;
+    --primary: #2eb97b;
+    --primary-dark: #239561;
+    --secondary: #dfe9f4;
+    --danger: #d95a5a;
+    --shadow: 0 18px 42px rgba(52, 74, 107, 0.14);
+    --bg-gradient-main:
+        radial-gradient(circle at top left, rgba(46, 185, 123, 0.16), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(91, 166, 255, 0.15), transparent 26%),
+        linear-gradient(135deg, #f8fbff 0%, #eef4fb 46%, #e7edf7 100%);
+    --marketing-bg:
+        radial-gradient(circle at 18% 18%, rgba(46, 185, 123, 0.12), transparent 22%),
+        radial-gradient(circle at 85% 22%, rgba(91, 166, 255, 0.12), transparent 24%),
+        linear-gradient(180deg, #f7fbff 0%, #eef4fb 48%, #e8eff8 100%);
+    --marketing-surface: rgba(255, 255, 255, 0.82);
+    --marketing-surface-strong: rgba(255, 255, 255, 0.94);
+    --marketing-muted: #607188;
+    --marketing-grid-line: rgba(15, 23, 42, 0.06);
+    --theme-toggle-bg: rgba(19, 32, 51, 0.06);
+    --theme-toggle-border: rgba(19, 32, 51, 0.1);
+    --theme-toggle-thumb: linear-gradient(135deg, #ffd76a, #ffb44a);
+    --theme-toggle-icon: #203047;
+    --theme-toggle-icon-muted: rgba(32, 48, 71, 0.45);
+    --input-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 253, 0.92));
+    --card-bg: rgba(255, 255, 255, 0.82);
+    --page-backdrop-filter: blur(16px);
 }
 
 * {
@@ -26,11 +82,9 @@ body {
     margin: 0;
     min-height: 100vh;
     font-family: "Trebuchet MS", "Segoe UI", sans-serif;
-    background:
-        radial-gradient(circle at top left, rgba(82, 224, 161, 0.18), transparent 30%),
-        radial-gradient(circle at bottom right, rgba(68, 127, 255, 0.2), transparent 28%),
-        linear-gradient(135deg, #040b14 0%, #08111f 45%, #0d1830 100%);
+    background: var(--bg-gradient-main);
     color: var(--text);
+    transition: background-color 0.35s ease, background 0.35s ease, color 0.35s ease;
 }
 
 a {
@@ -41,6 +95,40 @@ a {
 button,
 input {
     font: inherit;
+}
+
+body,
+.card,
+.results-section,
+.selector-block,
+.rating-panel,
+.import-panel,
+.option-pill,
+.config-display-pill,
+.match-card,
+.team-card,
+.bracket-match,
+.saved-tournament-card,
+.footer-card,
+.btn,
+.field input,
+.match-score-field input,
+.theme-toggle,
+.theme-toggle__thumb,
+.metric-pill,
+.sidebar-card,
+.panel-card,
+.feature-card,
+.shot-frame,
+.shot-frame__body,
+.final-cta__content {
+    transition:
+        background-color 0.35s ease,
+        background 0.35s ease,
+        color 0.35s ease,
+        border-color 0.35s ease,
+        box-shadow 0.35s ease,
+        transform 0.25s ease;
 }
 
 .landing-page {
@@ -180,10 +268,70 @@ input {
     gap: 16px;
 }
 
+.topbar__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
 .brand {
     font-size: 1.1rem;
     font-weight: 700;
     letter-spacing: -0.02em;
+}
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.theme-toggle__track {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 78px;
+    min-width: 78px;
+    height: 42px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid var(--theme-toggle-border);
+    background: var(--theme-toggle-bg);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    overflow: hidden;
+}
+
+.theme-toggle__thumb {
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--theme-toggle-thumb);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+:root[data-theme="light"] .theme-toggle__thumb {
+    transform: translateX(36px);
+}
+
+.theme-toggle__icon {
+    position: relative;
+    z-index: 1;
+    width: 16px;
+    height: 16px;
+    fill: var(--theme-toggle-icon-muted);
+}
+
+:root[data-theme="dark"] .theme-toggle__icon--moon,
+:root[data-theme="light"] .theme-toggle__icon--sun {
+    fill: var(--theme-toggle-icon);
 }
 
 .footer-shell {
@@ -347,7 +495,7 @@ input {
     padding: 24px;
     border: 1px solid var(--border);
     border-radius: 24px;
-    background: var(--surface);
+    background: var(--card-bg);
     box-shadow: var(--shadow);
     backdrop-filter: blur(10px);
     animation: fadeInUp 0.45s ease both;
@@ -438,7 +586,7 @@ input {
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 14px 16px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.025));
+    background: var(--input-bg);
     color: var(--text);
     outline: none;
     transition: border-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease, background-color 0.25s ease;
@@ -459,7 +607,7 @@ input {
     height: 100%;
     padding: 30px 18px 14px;
     border-radius: 20px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025));
+    background: var(--input-bg);
 }
 
 .field--floating span {
@@ -491,7 +639,7 @@ input {
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02)),
-        rgba(7, 17, 31, 0.35);
+        color-mix(in srgb, var(--bg) 72%, transparent);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -515,7 +663,7 @@ input {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     padding: 12px 18px;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.015));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), color-mix(in srgb, var(--surface) 86%, transparent));
     color: var(--text);
     cursor: pointer;
     transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
@@ -698,7 +846,7 @@ input {
     padding: 14px;
     border-radius: 18px;
     border: 1px dashed rgba(255, 255, 255, 0.14);
-    background: rgba(255, 255, 255, 0.025);
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
     cursor: pointer;
 }
 
@@ -797,7 +945,7 @@ input {
     border: 1px dashed rgba(255, 255, 255, 0.12);
     border-radius: 18px;
     color: var(--muted);
-    background: rgba(255, 255, 255, 0.03);
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
 }
 
 .player-list,
@@ -815,7 +963,7 @@ input {
     gap: 12px;
     padding: 14px 16px;
     border-radius: 18px;
-    background: rgba(255, 255, 255, 0.04);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
     border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
@@ -919,7 +1067,7 @@ input {
     padding: 20px;
     border-radius: 22px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), color-mix(in srgb, var(--surface) 92%, transparent));
     box-shadow: 0 16px 30px rgba(0, 0, 0, 0.18);
 }
 
@@ -950,6 +1098,157 @@ input {
     display: flex;
     flex-wrap: wrap;
     gap: 12px;
+}
+
+.statistics-grid,
+.statistics-team-grid {
+    display: grid;
+    gap: 18px;
+}
+
+.statistics-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.statistics-team-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.stat-card,
+.team-analytics-card {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    gap: 14px;
+    padding: 22px;
+    border-radius: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), color-mix(in srgb, var(--surface) 92%, transparent));
+    box-shadow: 0 18px 34px rgba(0, 0, 0, 0.18);
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.stat-card::before,
+.team-analytics-card::before {
+    content: "";
+    position: absolute;
+    inset: auto auto -34px -18px;
+    width: 120px;
+    height: 120px;
+    background: radial-gradient(circle, rgba(82, 224, 161, 0.16), transparent 70%);
+    filter: blur(12px);
+    pointer-events: none;
+}
+
+.stat-card:hover,
+.team-analytics-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(82, 224, 161, 0.18);
+    box-shadow: 0 24px 42px rgba(0, 0, 0, 0.22);
+}
+
+.stat-card__top,
+.team-analytics-card__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.stat-card__icon,
+.team-analytics-card__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(82, 224, 161, 0.2), rgba(91, 166, 255, 0.18));
+    border: 1px solid rgba(82, 224, 161, 0.16);
+    color: #e9fff4;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.stat-card__label,
+.team-analytics-card__label {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.stat-card__value {
+    margin: 0;
+    font-size: 2rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+}
+
+.stat-card__detail,
+.team-analytics-card__detail,
+.team-analytics-list span {
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.stat-card__badge {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.stat-card__badge--excellent {
+    background: rgba(82, 224, 161, 0.14);
+    border: 1px solid rgba(82, 224, 161, 0.18);
+    color: #93f3c6;
+}
+
+.stat-card__badge--good {
+    background: rgba(243, 201, 105, 0.14);
+    border: 1px solid rgba(243, 201, 105, 0.18);
+    color: #ffd97d;
+}
+
+.stat-card__badge--warning {
+    background: rgba(255, 107, 107, 0.14);
+    border: 1px solid rgba(255, 107, 107, 0.18);
+    color: #ffb4b4;
+}
+
+.team-analytics-card__title {
+    margin: 0;
+    font-size: 1.18rem;
+    letter-spacing: -0.03em;
+}
+
+.team-analytics-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.team-analytics-list__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.team-analytics-list strong {
+    font-size: 0.98rem;
 }
 
 .teams-grid {
@@ -1069,7 +1368,7 @@ input {
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 12px 14px;
-    background: rgba(255, 255, 255, 0.035);
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
     color: var(--text);
     outline: none;
     transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease;
@@ -1159,7 +1458,7 @@ input {
     padding: 18px;
     border-radius: 20px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.02));
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), color-mix(in srgb, var(--surface) 92%, transparent));
     box-shadow: 0 14px 28px rgba(0, 0, 0, 0.18);
 }
 
@@ -1473,7 +1772,8 @@ input {
     }
 
     .card--action,
-    .topbar {
+    .topbar,
+    .topbar__actions {
         flex-direction: column;
         align-items: stretch;
     }
@@ -1536,10 +1836,7 @@ input {
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
-    background:
-        radial-gradient(circle at 18% 18%, rgba(89, 230, 171, 0.11), transparent 24%),
-        radial-gradient(circle at 85% 22%, rgba(89, 167, 255, 0.12), transparent 24%),
-        linear-gradient(180deg, #020914 0%, #071321 48%, #09192c 100%);
+    background: var(--marketing-bg);
     font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
 }
 
@@ -1563,7 +1860,7 @@ input {
         radial-gradient(circle at 20% 20%, rgba(89, 230, 171, 0.18), transparent 28%),
         radial-gradient(circle at 80% 18%, rgba(89, 167, 255, 0.2), transparent 26%),
         radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.06), transparent 22%);
-    filter: blur(20px);
+    filter: var(--page-backdrop-filter);
     animation: drift 14s ease-in-out infinite alternate;
 }
 
@@ -1581,8 +1878,8 @@ input {
 
 .marketing-page .page-backdrop__grid {
     background-image:
-        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+        linear-gradient(var(--marketing-grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--marketing-grid-line) 1px, transparent 1px);
     background-size: 72px 72px;
     mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.65), transparent 88%);
     opacity: 0.45;
@@ -1626,7 +1923,7 @@ input {
     display: flex;
     align-items: center;
     gap: 16px;
-    color: var(--muted);
+    color: var(--marketing-muted);
 }
 
 .marketing-page .marketing-nav__links a:not(.btn) {
@@ -1682,7 +1979,7 @@ input {
     margin: 0;
     font-size: 1.12rem;
     line-height: 1.8;
-    color: #99adc7;
+    color: var(--marketing-muted);
     max-width: 58ch;
 }
 
@@ -1753,7 +2050,7 @@ input {
 .marketing-page .metric-pill span {
     display: block;
     margin-top: 8px;
-    color: #99adc7;
+    color: var(--marketing-muted);
     line-height: 1.6;
     font-size: 0.9rem;
 }
@@ -1833,7 +2130,7 @@ input {
     padding: 18px;
     border-radius: 24px;
     border: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(10, 21, 38, 0.76);
+    background: var(--marketing-surface);
     backdrop-filter: blur(16px);
 }
 
@@ -1848,7 +2145,7 @@ input {
 .marketing-page .team-box ul,
 .marketing-page .fixture-row span,
 .marketing-page .showcase-copy p {
-    color: #99adc7;
+    color: var(--marketing-muted);
 }
 
 .marketing-page .sidebar-card--accent {
@@ -1859,7 +2156,7 @@ input {
 .marketing-page .panel-card--highlight {
     background:
         linear-gradient(135deg, rgba(89, 230, 171, 0.08), rgba(89, 167, 255, 0.08)),
-        rgba(12, 27, 46, 0.94);
+        var(--marketing-surface-strong);
 }
 
 .marketing-page .panel-card__header {
@@ -2003,7 +2300,7 @@ input {
 
 .marketing-page .section-heading p:last-child {
     margin: 0;
-    color: #99adc7;
+    color: var(--marketing-muted);
     font-size: 1.04rem;
     line-height: 1.8;
 }
@@ -2086,7 +2383,7 @@ input {
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
         linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
-        rgba(10, 20, 35, 0.9);
+        color-mix(in srgb, var(--marketing-surface-strong) 94%, transparent);
 }
 
 .marketing-page .shot-frame__body--teams,
@@ -2333,7 +2630,7 @@ input {
 .marketing-page .final-cta__content p:not(.eyebrow) {
     margin: 0 auto 28px;
     max-width: 640px;
-    color: #99adc7;
+    color: var(--marketing-muted);
     font-size: 1.08rem;
     line-height: 1.8;
 }

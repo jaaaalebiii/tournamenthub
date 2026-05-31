@@ -5,13 +5,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sports Team Generator App</title>
+    <script>
+        (function () {
+            const storageKey = "tournamenthub-theme";
+            const savedTheme = localStorage.getItem(storageKey);
+            const systemTheme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+            document.documentElement.dataset.theme = savedTheme || systemTheme;
+        })();
+    </script>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body class="app-page">
     <header class="topbar">
         <a class="brand" href="index.html">Sports Team Generator</a>
-        <a class="btn btn-secondary" href="index.html">Back Home</a>
+        <div class="topbar__actions">
+            <button class="theme-toggle" type="button" aria-label="Toggle color theme" data-theme-toggle>
+                <span class="theme-toggle__track">
+                    <svg class="theme-toggle__icon theme-toggle__icon--sun" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M12 4a1 1 0 0 1 1 1v1.2a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1Zm0 12.8a1 1 0 0 1 1 1V19a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1Zm8-5.8a1 1 0 0 1 0 2h-1.2a1 1 0 1 1 0-2H20ZM6.4 12a1 1 0 0 1-1 1H4.2a1 1 0 1 1 0-2h1.2a1 1 0 0 1 1 1Zm9.56-5.96a1 1 0 0 1 1.41 0l.85.85a1 1 0 1 1-1.41 1.41l-.85-.85a1 1 0 0 1 0-1.41Zm-9.32 9.32a1 1 0 0 1 1.41 0l.85.85a1 1 0 0 1-1.41 1.41l-.85-.85a1 1 0 0 1 0-1.41Zm10.17 2.26a1 1 0 0 1 0-1.41l.85-.85a1 1 0 1 1 1.41 1.41l-.85.85a1 1 0 0 1-1.41 0ZM7.49 7.49a1 1 0 0 1 0-1.41l.85-.85a1 1 0 1 1 1.41 1.41l-.85.85a1 1 0 0 1-1.41 0ZM12 8a4 4 0 1 1 0 8 4 4 0 0 1 0-8Z" />
+                    </svg>
+                    <svg class="theme-toggle__icon theme-toggle__icon--moon" viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M14.77 4.58a1 1 0 0 1 .24 1.09 7 7 0 0 0 8.82 8.82 1 1 0 0 1 1.09.24 1 1 0 0 1 .08 1.12A10 10 0 1 1 13.65 4.5a1 1 0 0 1 1.12.08Z" />
+                    </svg>
+                    <span class="theme-toggle__thumb"></span>
+                </span>
+            </button>
+            <a class="btn btn-secondary" href="index.html">Back Home</a>
+        </div>
     </header>
 
     <main class="app-shell">
@@ -217,6 +240,15 @@ Sam,9</pre>
 
         <section class="results-section">
             <div class="card__header">
+                <h2>Tournament Statistics Dashboard</h2>
+                <p>Live tournament metrics and team analytics based on the current player pool and generated teams.</p>
+            </div>
+            <div id="statistics-overview" class="statistics-grid"></div>
+            <div id="statistics-team-analytics" class="statistics-team-grid"></div>
+        </section>
+
+        <section class="results-section">
+            <div class="card__header">
                 <h2>Team Results</h2>
                 <p>Teams will appear side by side once generated.</p>
             </div>
@@ -288,6 +320,7 @@ Sam,9</pre>
         </section>
     </footer>
 
+    <script src="theme.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="app.js"></script>
 </body>
