@@ -20,6 +20,8 @@ const sportRules = {
 };
 let players = loadPlayers();
 let matchConfig = getDefaultMatchConfig();
+matchConfig.customPlayersPerTeamInput = "";
+matchConfig.customTeamCountInput = "";
 let teamNames = {};
 let recentPlayerId = null;
 let latestGeneratedTeams = [];
@@ -155,9 +157,15 @@ function ensureTeamNames(teamCount) {
 
 function applySportSettings(sport) {
     if (sport === "custom") {
-        matchConfig.teamCount = matchConfig.customTeamCount;
-        matchConfig.teamSize = matchConfig.customPlayersPerTeam;
-        ensureTeamNames(matchConfig.teamCount);
+        if (matchConfig.customTeamCountInput !== "" && !Number.isNaN(Number(matchConfig.customTeamCountInput))) {
+            matchConfig.teamCount = Number(matchConfig.customTeamCountInput);
+            ensureTeamNames(matchConfig.teamCount);
+        }
+
+        if (matchConfig.customPlayersPerTeamInput !== "" && !Number.isNaN(Number(matchConfig.customPlayersPerTeamInput))) {
+            matchConfig.teamSize = Number(matchConfig.customPlayersPerTeamInput);
+        }
+
         return;
     }
 
@@ -184,8 +192,8 @@ function updateCustomSettingsVisibility() {
     customSettingsPanel.classList.toggle("is-visible", showCustomSettings);
     customSettingsPanel.setAttribute("aria-hidden", String(!showCustomSettings));
     sportModeBlock.classList.toggle("hidden", showCustomSettings);
-    teamCountInput.value = String(matchConfig.customTeamCount);
-    playersPerTeamInput.value = String(matchConfig.customPlayersPerTeam);
+    teamCountInput.value = matchConfig.customTeamCountInput;
+    playersPerTeamInput.value = matchConfig.customPlayersPerTeamInput;
 }
 
 function updateTeamSizeDisplay() {
@@ -195,8 +203,26 @@ function updateTeamSizeDisplay() {
         return;
     }
 
-    const activeTeamSize = isCustomSport() ? matchConfig.customPlayersPerTeam : matchConfig.teamSize;
-    teamSizeDisplay.textContent = `${activeTeamSize} player${activeTeamSize === 1 ? "" : "s"} per team`;
+    if (isCustomSport()) {
+        const rawCustomTeamSize = matchConfig.customPlayersPerTeamInput.trim();
+
+        if (rawCustomTeamSize === "") {
+            teamSizeDisplay.textContent = "Enter team size";
+            return;
+        }
+
+        const activeCustomTeamSize = Number(rawCustomTeamSize);
+
+        if (Number.isNaN(activeCustomTeamSize) || activeCustomTeamSize < 1) {
+            teamSizeDisplay.textContent = "Enter team size";
+            return;
+        }
+
+        teamSizeDisplay.textContent = `${activeCustomTeamSize} player${activeCustomTeamSize === 1 ? "" : "s"} per team`;
+        return;
+    }
+
+    teamSizeDisplay.textContent = `${matchConfig.teamSize} player${matchConfig.teamSize === 1 ? "" : "s"} per team`;
 }
 
 function renderModeOptions() {
@@ -351,6 +377,55 @@ function cloneTournamentData(data) {
     return JSON.parse(JSON.stringify(data));
 }
 
+function getCustomInputValue(input) {
+    return input?.value.trim() || "";
+}
+
+function validateCustomSportSettings() {
+    const { playersPerTeamInput, teamCountInput } = getAppElements();
+    const playersPerTeamValue = getCustomInputValue(playersPerTeamInput);
+    const teamCountValue = getCustomInputValue(teamCountInput);
+
+    matchConfig.customPlayersPerTeamInput = playersPerTeamValue;
+    matchConfig.customTeamCountInput = teamCountValue;
+
+    if (playersPerTeamValue === "") {
+        showConfigMessage("Please enter Players Per Team", "error");
+        return false;
+    }
+
+    if (teamCountValue === "") {
+        showConfigMessage("Please enter Number of Teams", "error");
+        return false;
+    }
+
+    const nextPlayersPerTeam = Number(playersPerTeamValue);
+    const nextTeamCount = Number(teamCountValue);
+
+    if (Number.isNaN(nextPlayersPerTeam) || nextPlayersPerTeam < 1) {
+        showConfigMessage("Players Per Team must be at least 1.", "error");
+        return false;
+    }
+
+    if (Number.isNaN(nextTeamCount) || nextTeamCount < 2) {
+        showConfigMessage("Number of Teams must be at least 2.", "error");
+        return false;
+    }
+
+    matchConfig.customPlayersPerTeam = Math.min(20, nextPlayersPerTeam);
+    matchConfig.customTeamCount = Math.min(8, nextTeamCount);
+    matchConfig.teamSize = matchConfig.customPlayersPerTeam;
+    matchConfig.teamCount = matchConfig.customTeamCount;
+    matchConfig.customPlayersPerTeamInput = String(matchConfig.customPlayersPerTeam);
+    matchConfig.customTeamCountInput = String(matchConfig.customTeamCount);
+    ensureTeamNames(matchConfig.teamCount);
+    updateCustomSettingsVisibility();
+    updateTeamSizeDisplay();
+    clearConfigMessage();
+
+    return true;
+}
+
 function formatSavedDate(savedAt) {
     const parsedDate = new Date(savedAt);
 
@@ -373,7 +448,9 @@ function getDefaultMatchConfig() {
         teamCount: 2,
         teamSize: 11,
         customPlayersPerTeam: 5,
-        customTeamCount: 2
+        customTeamCount: 2,
+        customPlayersPerTeamInput: "",
+        customTeamCountInput: ""
     };
 }
 
@@ -399,6 +476,11 @@ function normalizeMatchConfig(config) {
         nextConfig.teamCount = nextConfig.customTeamCount;
         nextConfig.teamSize = nextConfig.customPlayersPerTeam;
     }
+
+    nextConfig.customPlayersPerTeamInput = config?.customPlayersPerTeamInput
+        ?? (config?.customPlayersPerTeam ? String(config.customPlayersPerTeam) : "");
+    nextConfig.customTeamCountInput = config?.customTeamCountInput
+        ?? (config?.customTeamCount ? String(config.customTeamCount) : "");
 
     return nextConfig;
 }
@@ -765,8 +847,12 @@ function updateMatchConfig(configKey, value) {
     }
 
     if (configKey === "customTeamCount") {
-        matchConfig.teamCount = Number(value);
-        ensureTeamNames(matchConfig.teamCount);
+        matchConfig.customTeamCountInput = value;
+
+        if (value !== "" && !Number.isNaN(Number(value))) {
+            matchConfig.teamCount = Number(value);
+            ensureTeamNames(matchConfig.teamCount);
+        }
 
         if (teamsContainer && teamsContainer.children.length > 0) {
             clearTeams();
@@ -774,7 +860,12 @@ function updateMatchConfig(configKey, value) {
     }
 
     if (configKey === "customPlayersPerTeam") {
-        matchConfig.teamSize = Number(value);
+        matchConfig.customPlayersPerTeamInput = value;
+
+        if (value !== "" && !Number.isNaN(Number(value))) {
+            matchConfig.teamSize = Number(value);
+        }
+
         updateTeamSizeDisplay();
 
         if (teamsContainer && teamsContainer.children.length > 0) {
@@ -946,6 +1037,10 @@ function renderPlayers() {
 }
 
 function generateTeams() {
+    if (isCustomSport() && !validateCustomSportSettings()) {
+        return;
+    }
+
     const { playersPerTeam, teamCount } = getActiveTeamSettings();
     const requiredPlayers = playersPerTeam * teamCount;
 
@@ -1050,6 +1145,10 @@ function saveTournament() {
     const { tournamentNameInput } = getAppElements();
     const tournamentName = tournamentNameInput?.value.trim() || "";
 
+    if (isCustomSport() && !validateCustomSportSettings()) {
+        return;
+    }
+
     if (!tournamentName) {
         showTournamentSaveMessage("Enter a tournament name before saving.", "error");
         return;
@@ -1075,11 +1174,11 @@ function applyLoadedMatchConfig(savedConfig) {
     matchConfig = normalizeMatchConfig(savedConfig);
 
     if (playersPerTeamInput) {
-        playersPerTeamInput.value = String(matchConfig.customPlayersPerTeam);
+        playersPerTeamInput.value = matchConfig.customPlayersPerTeamInput;
     }
 
     if (teamCountInput) {
-        teamCountInput.value = String(matchConfig.customTeamCount);
+        teamCountInput.value = matchConfig.customTeamCountInput;
     }
 
     if (tournamentNameInput && typeof savedConfig.name === "string") {
@@ -1393,9 +1492,9 @@ function createTeamCard(team, highestTotal, balanceDifference) {
                 ${winnerBadge}
             </div>
             <p>${teamPlayers.length} player${teamPlayers.length === 1 ? "" : "s"}</p>
-            <ul class="team-list">
+            <ul class="team-list" data-team-key="${key}">
                 ${teamPlayers.map((player) => `
-                    <li>
+                    <li class="team-player-item" draggable="true" data-player-id="${player.id}" data-team-key="${key}">
                         <div class="team-player">
                             <strong>${player.name}</strong>
                             <span>Rating: ${player.rating}</span>
@@ -1857,7 +1956,471 @@ function renderTeams(generatedTeams, options = {}) {
 
     renderMatches(generatedTeams);
     renderStatisticsDashboard();
+    initDragAndDrop();
 }
+
+// ==========================================
+// Drag & Drop Team Rebalancing Implementation
+// ==========================================
+
+// Drag & Drop and Mobile Fallback State
+let draggedPlayerId = null;
+let draggedSourceTeamKey = null;
+let selectedPlayerId = null;
+let selectedSourceTeamKey = null;
+let justMovedPlayerId = null;
+let justUpdatedTeamKey = null;
+let swappedPlayer1Id = null;
+let swappedPlayer2Id = null;
+
+// Toast Notification System
+function showToast(message, type = "info") {
+    let container = document.getElementById("toast-container");
+    if (!container) {
+        container = document.createElement("div");
+        container.id = "toast-container";
+        container.className = "toast-container";
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.className = `toast toast--${type}`;
+    
+    let icon = "ℹ️";
+    if (type === "success") icon = "✨";
+    if (type === "error") icon = "⚠️";
+
+    toast.innerHTML = `
+        <span class="toast__icon" aria-hidden="true">${icon}</span>
+        <span class="toast__text">${message}</span>
+    `;
+
+    container.appendChild(toast);
+
+    // Trigger sliding transition
+    requestAnimationFrame(() => {
+        toast.classList.add("toast--visible");
+    });
+
+    // Remove toast after 3 seconds
+    window.setTimeout(() => {
+        toast.classList.remove("toast--visible");
+        toast.addEventListener("transitionend", () => {
+            toast.remove();
+            if (container.children.length === 0) {
+                container.remove();
+            }
+        });
+    }, 3000);
+}
+
+// Clear mobile select highlights
+function clearMobileSelection() {
+    selectedPlayerId = null;
+    selectedSourceTeamKey = null;
+
+    const { teamsContainer } = getAppElements();
+    if (!teamsContainer) return;
+
+    teamsContainer.querySelectorAll(".team-player-item--selected").forEach((el) => {
+        el.classList.remove("team-player-item--selected");
+    });
+    teamsContainer.querySelectorAll(".team-card--selectable-target").forEach((el) => {
+        el.classList.remove("team-card--selectable-target");
+    });
+}
+
+// Initialize Drag & Drop Events
+function initDragAndDrop() {
+    const { teamsContainer } = getAppElements();
+    if (!teamsContainer) return;
+
+    const teamCards = teamsContainer.querySelectorAll(".team-card");
+    const playerItems = teamsContainer.querySelectorAll(".team-player-item");
+
+    playerItems.forEach((playerItem) => {
+        // Native Drag Start
+        playerItem.addEventListener("dragstart", (event) => {
+            draggedPlayerId = playerItem.dataset.playerId;
+            draggedSourceTeamKey = playerItem.dataset.teamKey;
+
+            // Clear any active mobile click selections
+            clearMobileSelection();
+
+            playerItem.classList.add("team-player-item--dragging");
+            event.dataTransfer.setData("text/plain", draggedPlayerId);
+            event.dataTransfer.effectAllowed = "move";
+
+            // Highlight all other team cards as potential drop targets
+            teamCards.forEach((card) => {
+                const nameInput = card.querySelector(".team-name-input");
+                const teamKey = nameInput?.dataset.teamKey;
+                if (teamKey && teamKey !== draggedSourceTeamKey) {
+                    card.classList.add("team-card--drop-target");
+                }
+            });
+        });
+
+        // Native Drag End
+        playerItem.addEventListener("dragend", () => {
+            playerItem.classList.remove("team-player-item--dragging");
+            teamCards.forEach((card) => {
+                card.classList.remove("team-card--drop-target");
+                card.classList.remove("team-card--drag-over");
+            });
+            draggedPlayerId = null;
+            draggedSourceTeamKey = null;
+        });
+
+        // Player over player dragover (swap intent)
+        playerItem.addEventListener("dragover", (event) => {
+            if (draggedSourceTeamKey && draggedSourceTeamKey !== playerItem.dataset.teamKey) {
+                event.preventDefault();
+                event.stopPropagation();
+                playerItem.classList.add("team-player-item--drag-over");
+            }
+        });
+
+        // Player over player dragleave
+        playerItem.addEventListener("dragleave", (event) => {
+            event.stopPropagation();
+            playerItem.classList.remove("team-player-item--drag-over");
+        });
+
+        // Player dropped over player (execute swap!)
+        playerItem.addEventListener("drop", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            playerItem.classList.remove("team-player-item--drag-over");
+
+            const sourcePlayerId = event.dataTransfer.getData("text/plain") || draggedPlayerId;
+            const sourceKey = draggedSourceTeamKey;
+            const targetPlayerId = playerItem.dataset.playerId;
+            const targetKey = playerItem.dataset.teamKey;
+
+            if (sourcePlayerId && sourceKey && targetPlayerId && targetKey && sourceKey !== targetKey) {
+                swapPlayers(sourcePlayerId, sourceKey, targetPlayerId, targetKey);
+            }
+        });
+
+        // Mobile / Touch Click selection and swap fallback
+        playerItem.addEventListener("click", (event) => {
+            event.stopPropagation(); // Prevent document click handler from resetting
+            const playerId = playerItem.dataset.playerId;
+            const teamKey = playerItem.dataset.teamKey;
+
+            if (selectedPlayerId === playerId) {
+                clearMobileSelection();
+            } else if (selectedPlayerId && selectedSourceTeamKey && selectedSourceTeamKey !== teamKey) {
+                // Tapped another player in a different team -> SWAP!
+                const sourcePlayerId = selectedPlayerId;
+                const sourceKey = selectedSourceTeamKey;
+                clearMobileSelection();
+                swapPlayers(sourcePlayerId, sourceKey, playerId, teamKey);
+            } else {
+                // Select player
+                clearMobileSelection();
+                selectedPlayerId = playerId;
+                selectedSourceTeamKey = teamKey;
+
+                playerItem.classList.add("team-player-item--selected");
+
+                // Highlight all valid target team cards
+                teamCards.forEach((card) => {
+                    const nameInput = card.querySelector(".team-name-input");
+                    const cardTeamKey = nameInput?.dataset.teamKey;
+                    if (cardTeamKey && cardTeamKey !== selectedSourceTeamKey) {
+                        card.classList.add("team-card--selectable-target");
+                    }
+                });
+
+                showToast("Player selected. Tap a team to move, or another player to swap.", "success");
+            }
+        });
+    });
+
+    teamCards.forEach((card) => {
+        const nameInput = card.querySelector(".team-name-input");
+        const teamKey = nameInput?.dataset.teamKey;
+        if (!teamKey) return;
+
+        // Native Drag Over Card
+        card.addEventListener("dragover", (event) => {
+            event.preventDefault();
+            if (draggedSourceTeamKey && draggedSourceTeamKey !== teamKey) {
+                card.classList.add("team-card--drag-over");
+                event.dataTransfer.dropEffect = "move";
+            }
+        });
+
+        // Native Drag Leave Card
+        card.addEventListener("dragleave", () => {
+            card.classList.remove("team-card--drag-over");
+        });
+
+        // Native Drop on Card
+        card.addEventListener("drop", (event) => {
+            event.preventDefault();
+            card.classList.remove("team-card--drag-over");
+
+            const playerId = event.dataTransfer.getData("text/plain") || draggedPlayerId;
+            const sourceKey = draggedSourceTeamKey;
+
+            if (playerId && sourceKey && sourceKey !== teamKey) {
+                movePlayer(playerId, sourceKey, teamKey);
+            }
+        });
+
+        // Mobile/Touch Click destination selection
+        card.addEventListener("click", (event) => {
+            if (selectedPlayerId && selectedSourceTeamKey && selectedSourceTeamKey !== teamKey) {
+                event.stopPropagation();
+                const playerId = selectedPlayerId;
+                const sourceKey = selectedSourceTeamKey;
+                clearMobileSelection();
+                movePlayer(playerId, sourceKey, teamKey);
+            }
+        });
+    });
+}
+
+// Move Player data logic
+function movePlayer(playerId, sourceTeamKey, targetTeamKey) {
+    const { playersPerTeam } = getActiveTeamSettings();
+
+    const targetTeam = latestGeneratedTeams.find((t) => t.key === targetTeamKey);
+    const sourceTeam = latestGeneratedTeams.find((t) => t.key === sourceTeamKey);
+
+    if (!targetTeam || !sourceTeam) {
+        showToast("Error: team not found.", "error");
+        return;
+    }
+
+    // Check size limit rules
+    if (targetTeam.players.length >= playersPerTeam) {
+        showToast("Team size limit reached.", "error");
+        return;
+    }
+
+    const playerIndex = sourceTeam.players.findIndex((p) => p.id === playerId);
+    if (playerIndex === -1) {
+        showToast("Error: player not found in source team.", "error");
+        return;
+    }
+
+    // Splice from source, push to target
+    const [player] = sourceTeam.players.splice(playerIndex, 1);
+    targetTeam.players.push(player);
+
+    // Recalculate totals
+    sourceTeam.total = sourceTeam.players.reduce((sum, p) => sum + p.rating, 0);
+    targetTeam.total = targetTeam.players.reduce((sum, p) => sum + p.rating, 0);
+
+    // Set variables for visual feedback
+    justMovedPlayerId = playerId;
+    justUpdatedTeamKey = targetTeamKey;
+
+    // Sync with active tournament snapshots
+    if (latestTournament) {
+        latestTournament.teams = cloneTournamentData(latestGeneratedTeams);
+    }
+
+    // Trigger optimized direct-DOM update
+    updateTeamsDOM(sourceTeamKey, targetTeamKey);
+
+    showToast(`Moved ${player.name} to ${getTeamDisplayName(targetTeam)}`, "success");
+}
+
+// Swap Players logic
+function swapPlayers(player1Id, team1Key, player2Id, team2Key) {
+    const team1 = latestGeneratedTeams.find((t) => t.key === team1Key);
+    const team2 = latestGeneratedTeams.find((t) => t.key === team2Key);
+
+    if (!team1 || !team2) {
+        showToast("Error swapping players: team not found.", "error");
+        return;
+    }
+
+    const p1Index = team1.players.findIndex((p) => p.id === player1Id);
+    const p2Index = team2.players.findIndex((p) => p.id === player2Id);
+
+    if (p1Index === -1 || p2Index === -1) {
+        showToast("Error: player not found in team.", "error");
+        return;
+    }
+
+    const player1 = team1.players[p1Index];
+    const player2 = team2.players[p2Index];
+
+    // Swap items in-place
+    team1.players[p1Index] = player2;
+    team2.players[p2Index] = player1;
+
+    // Recalculate totals
+    team1.total = team1.players.reduce((sum, p) => sum + p.rating, 0);
+    team2.total = team2.players.reduce((sum, p) => sum + p.rating, 0);
+
+    // Set variables for visual feedback
+    swappedPlayer1Id = player1Id;
+    swappedPlayer2Id = player2Id;
+
+    // Sync with active tournament snapshots
+    if (latestTournament) {
+        latestTournament.teams = cloneTournamentData(latestGeneratedTeams);
+    }
+
+    // Trigger optimized direct-DOM update
+    updateTeamsDOM(team1Key, team2Key);
+
+    showToast(`Swapped ${player1.name} with ${player2.name}`, "success");
+}
+
+// Optimized high-performance direct-DOM update engine
+function updateTeamsDOM(sourceTeamKey, targetTeamKey) {
+    const { teamsContainer } = getAppElements();
+    if (!teamsContainer) return;
+
+    const teamTotals = latestGeneratedTeams.map((team) => team.total);
+    const highestTotal = Math.max(...teamTotals);
+    const lowestTotal = Math.min(...teamTotals);
+    const balanceDifference = highestTotal - lowestTotal;
+
+    // 1. Update Balance Summary block in-place
+    const balanceSummary = teamsContainer.querySelector(".balance-summary");
+    if (balanceSummary) {
+        const isWellBalanced = balanceDifference <= 2;
+        const balanceLabel = isWellBalanced ? "Well Balanced" : "Needs Adjustment";
+        balanceSummary.className = `balance-summary${isWellBalanced ? " balance-summary--good" : ""}`;
+        
+        const diffStrong = balanceSummary.querySelector("strong");
+        if (diffStrong) {
+            diffStrong.textContent = `Difference: ${balanceDifference}`;
+        }
+        
+        const badge = balanceSummary.querySelector(".balance-summary__badge");
+        if (badge) {
+            badge.textContent = balanceLabel;
+        }
+    }
+
+    // 2. Update ONLY the two affected team card elements
+    [sourceTeamKey, targetTeamKey].forEach((teamKey) => {
+        const team = latestGeneratedTeams.find((t) => t.key === teamKey);
+        if (!team) return;
+
+        const nameInput = teamsContainer.querySelector(`[data-team-key="${teamKey}"]`);
+        const teamCard = nameInput?.closest(".team-card");
+        if (!teamCard) return;
+
+        // Update player count header
+        const countText = teamCard.querySelector("p");
+        if (countText) {
+            countText.textContent = `${team.players.length} player${team.players.length === 1 ? "" : "s"}`;
+        }
+
+        // Update player list list-items
+        const list = teamCard.querySelector(".team-list");
+        if (list) {
+            list.innerHTML = team.players.map((player) => `
+                <li class="team-player-item" draggable="true" data-player-id="${player.id}" data-team-key="${teamKey}">
+                    <div class="team-player">
+                        <strong>${player.name}</strong>
+                        <span>Rating: ${player.rating}</span>
+                    </div>
+                </li>
+            `).join("");
+        }
+
+        // Update total rating summary
+        const totalText = teamCard.querySelector(".team-total");
+        if (totalText) {
+            totalText.textContent = `Total Rating: ${team.total}`;
+        }
+        
+        // Update balance note if present
+        const isWellBalanced = balanceDifference <= 2;
+        const balanceNote = teamCard.querySelector(".team-balance-note");
+        if (isWellBalanced && !balanceNote) {
+            const noteDiv = document.createElement("div");
+            noteDiv.className = "team-balance-note";
+            noteDiv.textContent = "Balanced matchup";
+            // Insert before the total rating element
+            teamCard.insertBefore(noteDiv, totalText);
+        } else if (!isWellBalanced && balanceNote) {
+            balanceNote.remove();
+        }
+    });
+
+    // 3. Dynamically recalculate and toggle winner badge/classes for ALL team cards
+    latestGeneratedTeams.forEach((team) => {
+        const nameInput = teamsContainer.querySelector(`[data-team-key="${team.key}"]`);
+        const teamCard = nameInput?.closest(".team-card");
+        if (!teamCard) return;
+
+        const isWinner = team.total === highestTotal;
+        const isDraw = balanceDifference === 0;
+
+        teamCard.classList.toggle("team-card--winner", isWinner);
+        teamCard.classList.toggle("team-card--draw", isDraw);
+
+        const topContainer = teamCard.querySelector(".team-card__top");
+        if (topContainer) {
+            let badge = topContainer.querySelector(".team-badge");
+            if (isWinner && !badge) {
+                badge = document.createElement("span");
+                badge.className = "team-badge";
+                badge.textContent = "Higher Rated";
+                topContainer.appendChild(badge);
+            } else if (!isWinner && badge) {
+                badge.remove();
+            }
+        }
+    });
+
+    // 4. Re-bind Drag & Drop / Mobile touch listeners to fresh player card nodes
+    initDragAndDrop();
+
+    // 5. Update statistics overview dashboard in-place
+    renderStatisticsDashboard();
+
+    // 6. Execute micro-animations for visual feedback
+    if (justMovedPlayerId) {
+        const droppedElement = teamsContainer.querySelector(`[data-player-id="${justMovedPlayerId}"]`);
+        if (droppedElement) {
+            droppedElement.classList.add("team-player-item--dropped");
+        }
+        justMovedPlayerId = null;
+    }
+
+    if (swappedPlayer1Id) {
+        const p1Element = teamsContainer.querySelector(`[data-player-id="${swappedPlayer1Id}"]`);
+        if (p1Element) {
+            p1Element.classList.add("team-player-item--dropped");
+        }
+        swappedPlayer1Id = null;
+    }
+
+    if (swappedPlayer2Id) {
+        const p2Element = teamsContainer.querySelector(`[data-player-id="${swappedPlayer2Id}"]`);
+        if (p2Element) {
+            p2Element.classList.add("team-player-item--dropped");
+        }
+        swappedPlayer2Id = null;
+    }
+
+    if (justUpdatedTeamKey) {
+        const updatedTeamCard = teamsContainer.querySelector(`[data-team-key="${justUpdatedTeamKey}"]`)?.closest(".team-card");
+        if (updatedTeamCard) {
+            updatedTeamCard.classList.add("team-card--just-updated");
+        }
+        justUpdatedTeamKey = null;
+    }
+}
+
+// Global click listener to deselect mobile tap-to-move selection
+document.addEventListener("click", () => {
+    clearMobileSelection();
+});
 
 function clearTeams() {
     const {
@@ -1937,16 +2500,10 @@ function bindEvents() {
     exportPdfButton.addEventListener("click", exportTournamentPdf);
     ratingInput.addEventListener("input", updateRatingDisplay);
     playersPerTeamInput.addEventListener("input", () => {
-        const nextPlayersPerTeam = Math.min(20, Math.max(1, Number(playersPerTeamInput.value) || 1));
-
-        playersPerTeamInput.value = String(nextPlayersPerTeam);
-        updateMatchConfig("customPlayersPerTeam", nextPlayersPerTeam);
+        updateMatchConfig("customPlayersPerTeam", playersPerTeamInput.value);
     });
     teamCountInput.addEventListener("input", () => {
-        const nextTeamCount = Math.min(8, Math.max(2, Number(teamCountInput.value) || 2));
-
-        teamCountInput.value = String(nextTeamCount);
-        updateMatchConfig("customTeamCount", nextTeamCount);
+        updateMatchConfig("customTeamCount", teamCountInput.value);
     });
     csvFileInput.addEventListener("change", () => {
         updateImportButtonState();

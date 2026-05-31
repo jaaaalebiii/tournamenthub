@@ -2873,3 +2873,146 @@ body,
         padding: 22px 20px;
     }
 }
+
+/* Drag and Drop Rebalancing Styles */
+.team-player-item {
+    cursor: grab;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.team-player-item:active {
+    cursor: grabbing;
+}
+
+.team-player-item--dragging {
+    opacity: 0.45;
+    border: 1px dashed var(--primary) !important;
+    transform: scale(0.97);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.team-player-item--selected {
+    border-color: var(--primary) !important;
+    background: linear-gradient(135deg, rgba(82, 224, 161, 0.12), rgba(255, 255, 255, 0.03)) !important;
+    transform: translateY(-2px);
+    animation: selectPulse 1.5s ease-in-out infinite;
+}
+
+.team-player-item--drag-over {
+    border-color: var(--primary) !important;
+    background: linear-gradient(135deg, rgba(82, 224, 161, 0.16), rgba(255, 255, 255, 0.05)) !important;
+    box-shadow: 0 0 14px rgba(82, 224, 161, 0.3) !important;
+    transform: translateY(-2px) scale(1.02);
+}
+
+.team-player-item--dropped {
+    animation: fadeInDropped 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.team-card--drop-target,
+.team-card--selectable-target {
+    border-color: rgba(82, 224, 161, 0.22) !important;
+    background: linear-gradient(180deg, rgba(82, 224, 161, 0.03), rgba(255, 255, 255, 0.015)) !important;
+    box-shadow: 0 0 0 1px rgba(82, 224, 161, 0.06), 0 14px 28px rgba(0, 0, 0, 0.15) !important;
+}
+
+.team-card--drag-over {
+    border-color: var(--primary) !important;
+    background: linear-gradient(180deg, rgba(82, 224, 161, 0.1), rgba(82, 224, 161, 0.02)) !important;
+    box-shadow: 0 0 0 1px var(--primary), 0 22px 44px rgba(82, 224, 161, 0.18) !important;
+    transform: translateY(-4px) scale(1.01);
+}
+
+.team-card--just-updated {
+    animation: teamUpdatedPulse 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Animations */
+@keyframes selectPulse {
+    0%, 100% {
+        box-shadow: 0 0 8px rgba(82, 224, 161, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+    50% {
+        box-shadow: 0 0 18px rgba(82, 224, 161, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+}
+
+@keyframes fadeInDropped {
+    0% {
+        background: rgba(82, 224, 161, 0.24);
+        border-color: rgba(82, 224, 161, 0.4);
+        transform: scale(0.95);
+    }
+    100% {
+        background: color-mix(in srgb, var(--surface) 82%, transparent);
+        border-color: rgba(255, 255, 255, 0.06);
+        transform: scale(1);
+    }
+}
+
+@keyframes teamUpdatedPulse {
+    0% {
+        box-shadow: 0 0 0 2px rgba(82, 224, 161, 0.6), 0 18px 34px rgba(0, 0, 0, 0.24);
+        border-color: var(--primary);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent, 0 18px 34px rgba(0, 0, 0, 0.24);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+}
+
+/* Glassmorphic Toast Notifications */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    border-radius: 16px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text);
+    background: rgba(10, 20, 38, 0.72);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+    transform: translateY(20px) scale(0.95);
+    opacity: 0;
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.35s ease;
+}
+
+.toast--visible {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+}
+
+.toast--error {
+    border-color: rgba(255, 107, 107, 0.24);
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.15), rgba(10, 20, 38, 0.75));
+    box-shadow: 0 12px 32px rgba(255, 107, 107, 0.08), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.toast--success {
+    border-color: rgba(82, 224, 161, 0.24);
+    background: linear-gradient(135deg, rgba(82, 224, 161, 0.15), rgba(10, 20, 38, 0.75));
+    box-shadow: 0 12px 32px rgba(82, 224, 161, 0.08), 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.toast__icon {
+    font-size: 1.1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
