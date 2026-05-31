@@ -166,8 +166,8 @@ Feel free to fork the repository and submit pull requests.
 
 **Jalaj Maheshwari**
 
-* GitHub: https://github.com/YOUR_USERNAME
-* LinkedIn: https://linkedin.com/in/YOUR_PROFILE
+* GitHub: [https://github.com/YOUR_USERNAME](https://github.com/jaaaalebiii)
+* LinkedIn: [https://linkedin.com/in/YOUR_PROFILE](https://www.linkedin.com/in/jalaj-maheshwari-82802130a/)
 
 ---
 
