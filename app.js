@@ -18,6 +18,44 @@ const sportRules = {
         modes: ["Relay"]
     }
 };
+const sportRoles = {
+    Cricket: [
+        "Batsman",
+        "Bowler",
+        "All-Rounder",
+        "Wicketkeeper"
+    ],
+    Football: [
+        "Goalkeeper",
+        "Defender",
+        "Midfielder",
+        "Forward"
+    ],
+    Badminton: [
+        "Singles Specialist",
+        "Doubles Specialist"
+    ],
+    Athletics: [
+        "Sprinter",
+        "Relay Runner",
+        "Distance Runner"
+    ]
+};
+const roleShortLabels = {
+    Batsman: "BAT",
+    Bowler: "BOWL",
+    "All-Rounder": "AR",
+    Wicketkeeper: "WK",
+    Goalkeeper: "GK",
+    Defender: "DEF",
+    Midfielder: "MID",
+    Forward: "FWD",
+    "Singles Specialist": "SS",
+    "Doubles Specialist": "DS",
+    Sprinter: "SPR",
+    "Relay Runner": "REL",
+    "Distance Runner": "DIST"
+};
 let players = loadPlayers();
 let matchConfig = getDefaultMatchConfig();
 matchConfig.customPlayersPerTeamInput = "";
@@ -35,7 +73,8 @@ function normalizePlayer(player) {
     return {
         id: player.id || createPlayerId(),
         name: player.name,
-        rating: player.rating
+        rating: player.rating,
+        role: player.role || null
     };
 }
 
@@ -84,6 +123,8 @@ function getAppElements() {
         ratingInput: document.getElementById("rating"),
         ratingValue: document.getElementById("rating-value"),
         ratingLevel: document.getElementById("rating-level"),
+        rolePanel: document.getElementById("role-panel"),
+        roleSelect: document.getElementById("role"),
         playersPerTeamInput: document.getElementById("players-per-team"),
         teamCountInput: document.getElementById("team-count"),
         customSettingsPanel: document.getElementById("custom-sport-settings"),
@@ -140,6 +181,49 @@ function formatSportName(sportKey) {
     return sportKey.charAt(0).toUpperCase() + sportKey.slice(1);
 }
 
+function getRoleOptionsForSport(sport) {
+    return sportRoles[formatSportName(sport)] || [];
+}
+
+function getDefaultRoleForSport(sport) {
+    return getRoleOptionsForSport(sport)[0] || null;
+}
+
+function isValidRoleForSport(sport, role) {
+    if (!role) {
+        return false;
+    }
+
+    return getRoleOptionsForSport(sport).includes(role);
+}
+
+function getRoleShortLabel(role) {
+    return roleShortLabels[role] || role || "";
+}
+
+function renderPlayerRoleBadge(role) {
+    if (!role) {
+        return "";
+    }
+
+    const shortLabel = getRoleShortLabel(role);
+
+    if (!shortLabel) {
+        return "";
+    }
+
+    return `<span class="player-role-badge">[${shortLabel}]</span>`;
+}
+
+function renderPlayerIdentity(player) {
+    return `
+        <div class="player-name-row">
+            <span class="player-name">${player.name}</span>
+            ${renderPlayerRoleBadge(player.role)}
+        </div>
+    `;
+}
+
 function getDefaultTeamName(teamIndex) {
     return `Team ${teamIndex + 1}`;
 }
@@ -182,16 +266,19 @@ function applySportSettings(sport) {
 }
 
 function updateCustomSettingsVisibility() {
-    const { customSettingsPanel, teamCountInput, playersPerTeamInput, sportModeBlock } = getAppElements();
+    const { customSettingsPanel, teamCountInput, playersPerTeamInput, sportModeBlock, rolePanel, roleSelect } = getAppElements();
     const showCustomSettings = isCustomSport();
 
-    if (!customSettingsPanel || !teamCountInput || !playersPerTeamInput || !sportModeBlock) {
+    if (!customSettingsPanel || !teamCountInput || !playersPerTeamInput || !sportModeBlock || !rolePanel || !roleSelect) {
         return;
     }
 
     customSettingsPanel.classList.toggle("is-visible", showCustomSettings);
     customSettingsPanel.setAttribute("aria-hidden", String(!showCustomSettings));
     sportModeBlock.classList.toggle("hidden", showCustomSettings);
+    rolePanel.classList.toggle("hidden", showCustomSettings);
+    rolePanel.setAttribute("aria-hidden", String(showCustomSettings));
+    roleSelect.disabled = showCustomSettings;
     teamCountInput.value = matchConfig.customTeamCountInput;
     playersPerTeamInput.value = matchConfig.customPlayersPerTeamInput;
 }
@@ -223,6 +310,45 @@ function updateTeamSizeDisplay() {
     }
 
     teamSizeDisplay.textContent = `${matchConfig.teamSize} player${matchConfig.teamSize === 1 ? "" : "s"} per team`;
+}
+
+function renderRoleOptions() {
+    const { rolePanel, roleSelect } = getAppElements();
+
+    if (!rolePanel || !roleSelect) {
+        return;
+    }
+
+    if (isCustomSport()) {
+        rolePanel.classList.add("hidden");
+        rolePanel.setAttribute("aria-hidden", "true");
+        roleSelect.innerHTML = "";
+        roleSelect.value = "";
+        roleSelect.disabled = true;
+        matchConfig.selectedRole = null;
+        return;
+    }
+
+    const sportRoleOptions = getRoleOptionsForSport(matchConfig.sport);
+    const selectedRole = isValidRoleForSport(matchConfig.sport, matchConfig.selectedRole)
+        ? matchConfig.selectedRole
+        : getDefaultRoleForSport(matchConfig.sport);
+
+    rolePanel.classList.remove("hidden");
+    rolePanel.setAttribute("aria-hidden", "false");
+    roleSelect.disabled = false;
+    roleSelect.innerHTML = "";
+
+    sportRoleOptions.forEach((role) => {
+        const option = document.createElement("option");
+        option.value = role;
+        option.textContent = role;
+        option.selected = role === selectedRole;
+        roleSelect.appendChild(option);
+    });
+
+    roleSelect.value = selectedRole || sportRoleOptions[0] || "";
+    matchConfig.selectedRole = roleSelect.value || null;
 }
 
 function renderModeOptions() {
@@ -450,7 +576,8 @@ function getDefaultMatchConfig() {
         customPlayersPerTeam: 5,
         customTeamCount: 2,
         customPlayersPerTeamInput: "",
-        customTeamCountInput: ""
+        customTeamCountInput: "",
+        selectedRole: getDefaultRoleForSport("cricket")
     };
 }
 
@@ -472,9 +599,14 @@ function normalizeMatchConfig(config) {
         } else {
             nextConfig.teamSize = sportRules[nextConfig.sport].teamSize;
         }
+
+        nextConfig.selectedRole = isValidRoleForSport(nextConfig.sport, nextConfig.selectedRole)
+            ? nextConfig.selectedRole
+            : getDefaultRoleForSport(nextConfig.sport);
     } else if (nextConfig.sport === "custom") {
         nextConfig.teamCount = nextConfig.customTeamCount;
         nextConfig.teamSize = nextConfig.customPlayersPerTeam;
+        nextConfig.selectedRole = null;
     }
 
     nextConfig.customPlayersPerTeamInput = config?.customPlayersPerTeamInput
@@ -617,29 +749,29 @@ function renderStatisticsDashboard() {
         ${createStatisticsCard("HP", "Highest Rated Player", statistics.highestRatedPlayer ? statistics.highestRatedPlayer.rating : "-", highestRatedPlayerText)}
         ${createStatisticsCard("LP", "Lowest Rated Player", statistics.lowestRatedPlayer ? statistics.lowestRatedPlayer.rating : "-", lowestRatedPlayerText)}
         ${createStatisticsCard(
-            "BS",
-            "Tournament Balance Score",
-            statistics.balanceDifference,
-            `Rating difference between ${strongestTeamName} and ${weakestTeamName}`,
-            `<span class="stat-card__badge ${statistics.balanceStatus.className}">${statistics.balanceStatus.label}</span>`
-        )}
+        "BS",
+        "Tournament Balance Score",
+        statistics.balanceDifference,
+        `Rating difference between ${strongestTeamName} and ${weakestTeamName}`,
+        `<span class="stat-card__badge ${statistics.balanceStatus.className}">${statistics.balanceStatus.label}</span>`
+    )}
         ${createStatisticsCard("MG", "Total Matches Generated", statistics.totalMatchesGenerated, "Bracket and fixture matches currently created")}
     `;
 
     if (statistics.strongestTeam && statistics.weakestTeam) {
         statisticsTeamAnalytics.innerHTML = `
             ${createTeamAnalyticsCard(
-                statistics.strongestTeam,
-                "ST",
-                "Strongest Team",
-                `${strongestTeamName} currently has the highest total rating.`
-            )}
+            statistics.strongestTeam,
+            "ST",
+            "Strongest Team",
+            `${strongestTeamName} currently has the highest total rating.`
+        )}
             ${createTeamAnalyticsCard(
-                statistics.weakestTeam,
-                "WT",
-                "Weakest Team",
-                `${weakestTeamName} currently has the lowest total rating.`
-            )}
+            statistics.weakestTeam,
+            "WT",
+            "Weakest Team",
+            `${weakestTeamName} currently has the lowest total rating.`
+        )}
             <article class="team-analytics-card">
                 <div class="team-analytics-card__top">
                     <div>
@@ -706,6 +838,10 @@ function toggleInstructions() {
     toggleInstructionsButton.textContent = isHidden ? "View Instructions" : "Hide Instructions";
 }
 
+function getCsvRowColumns(row) {
+    return row.split(",").map((column) => column.trim());
+}
+
 function parseCsvPlayers(csvText) {
     const rows = csvText
         .split(/\r?\n/)
@@ -716,39 +852,73 @@ function parseCsvPlayers(csvText) {
         return { players: [], hasValidHeader: false };
     }
 
-    const headerColumns = rows[0].split(",").map((column) => column.trim().toLowerCase());
+    const headerColumns = getCsvRowColumns(rows[0]).map((column) => column.toLowerCase());
     const hasValidHeader = headerColumns[0] === "name" && headerColumns[1] === "rating";
 
     if (!hasValidHeader) {
-        return { players: [], hasValidHeader: false };
+        return { players: [], hasValidHeader: false, errorMessage: "" };
     }
 
-    const importedPlayers = rows.slice(1).reduce((validPlayers, row) => {
-        const columns = row.split(",");
+    const importSportName = formatSportName(matchConfig.sport);
+    const validRoles = getRoleOptionsForSport(matchConfig.sport);
+    const hasRoleColumn = headerColumns[2] === "role";
+    const importedPlayers = [];
+
+    for (const row of rows.slice(1)) {
+        const columns = getCsvRowColumns(row);
 
         if (columns.length < 2) {
-            return validPlayers;
+            continue;
         }
 
-        const name = columns[0].trim();
-        const rating = Number(columns[1].trim());
+        const name = columns[0];
+        const rating = Number(columns[1]);
+        const rawRole = columns[2] || "";
 
         if (!name || Number.isNaN(rating) || rating < 1 || rating > 10) {
-            return validPlayers;
+            continue;
         }
 
-        validPlayers.push({
+        if (!isCustomSport()) {
+            const roleToUse = hasRoleColumn ? rawRole : getDefaultRoleForSport(matchConfig.sport);
+
+            if (!roleToUse) {
+                return {
+                    players: [],
+                    hasValidHeader: true,
+                    errorMessage: `Please include a role for ${importSportName} players.`
+                };
+            }
+
+            if (!validRoles.includes(roleToUse)) {
+                return {
+                    players: [],
+                    hasValidHeader: true,
+                    errorMessage: `${roleToUse} is not a valid ${importSportName} role.`
+                };
+            }
+
+            importedPlayers.push({
+                id: createPlayerId(),
+                name,
+                rating,
+                role: roleToUse
+            });
+            continue;
+        }
+
+        importedPlayers.push({
             id: createPlayerId(),
             name,
-            rating
+            rating,
+            role: null
         });
-
-        return validPlayers;
-    }, []);
+    }
 
     return {
         players: importedPlayers,
-        hasValidHeader: true
+        hasValidHeader: true,
+        errorMessage: ""
     };
 }
 
@@ -771,10 +941,15 @@ function handleCsvImport() {
 
     reader.addEventListener("load", () => {
         const csvText = typeof reader.result === "string" ? reader.result : "";
-        const { players: importedPlayers, hasValidHeader } = parseCsvPlayers(csvText);
+        const { players: importedPlayers, hasValidHeader, errorMessage } = parseCsvPlayers(csvText);
 
         if (!hasValidHeader) {
-            showImportMessage("Invalid CSV format. Use headers: name,rating", "error");
+            showImportMessage("Invalid CSV format. Use headers: name,rating[,role]", "error");
+            return;
+        }
+
+        if (errorMessage) {
+            showImportMessage(errorMessage, "error");
             return;
         }
 
@@ -827,6 +1002,7 @@ function updateMatchConfig(configKey, value) {
     if (configKey === "sport") {
         applySportSettings(value);
         updateCustomSettingsVisibility();
+        renderRoleOptions();
         renderModeOptions();
         applyModeRules();
         updateTeamSizeDisplay();
@@ -834,6 +1010,10 @@ function updateMatchConfig(configKey, value) {
         if (teamsContainer && teamsContainer.children.length > 0) {
             clearTeams();
         }
+    }
+
+    if (configKey === "selectedRole") {
+        matchConfig.selectedRole = value;
     }
 
     if (configKey === "mode") {
@@ -906,6 +1086,10 @@ function updateRatingDisplay() {
     ratingInput.style.setProperty("--range-accent-soft", ratingMeta.accentSoft);
 }
 
+function handleRoleSelectionChange(event) {
+    updateMatchConfig("selectedRole", event.target.value);
+}
+
 function renderConfigSummary() {
     const { configSummary } = getAppElements();
 
@@ -924,9 +1108,10 @@ function renderConfigSummary() {
 }
 
 function addPlayer() {
-    const { nameInput, ratingInput } = getAppElements();
+    const { nameInput, ratingInput, roleSelect } = getAppElements();
     const name = nameInput.value.trim();
     const rating = Number(ratingInput.value);
+    const role = isCustomSport() ? null : roleSelect?.value || null;
 
     if (!name || Number.isNaN(rating) || rating < 1 || rating > 10) {
         alert("Enter a valid player name and rating between 1 and 10.");
@@ -936,7 +1121,8 @@ function addPlayer() {
     const player = {
         id: createPlayerId(),
         name,
-        rating
+        rating,
+        role
     };
 
     players.push(player);
@@ -1015,7 +1201,7 @@ function renderPlayers() {
         const meta = document.createElement("div");
         meta.className = "player-meta";
         meta.innerHTML = `
-            <span class="player-name">${player.name}</span>
+            ${renderPlayerIdentity(player)}
             <span class="player-rating">Rating: ${player.rating}</span>
         `;
 
@@ -1187,6 +1373,7 @@ function applyLoadedMatchConfig(savedConfig) {
 
     ensureTeamNames(matchConfig.teamCount);
     updateCustomSettingsVisibility();
+    renderRoleOptions();
     renderModeOptions();
     applyModeRules();
     updateTeamSizeDisplay();
@@ -1314,7 +1501,11 @@ function getTournamentFixtureLines(tournamentState) {
 function getTeamSummaryLines(teams) {
     return teams.flatMap((team) => {
         const title = getTeamDisplayName(team);
-        const playerLine = team.players.map((player) => `${player.name} (${player.rating})`).join(", ");
+        const playerLine = team.players.map((player) => (
+            player.role
+                ? `${player.name} (${player.rating}) - ${player.role}`
+                : `${player.name} (${player.rating})`
+        )).join(", ");
 
         return [
             `${title}`,
@@ -1496,7 +1687,7 @@ function createTeamCard(team, highestTotal, balanceDifference) {
                 ${teamPlayers.map((player) => `
                     <li class="team-player-item" draggable="true" data-player-id="${player.id}" data-team-key="${key}">
                         <div class="team-player">
-                            <strong>${player.name}</strong>
+                            ${renderPlayerIdentity(player)}
                             <span>Rating: ${player.rating}</span>
                         </div>
                     </li>
@@ -1985,7 +2176,7 @@ function showToast(message, type = "info") {
 
     const toast = document.createElement("div");
     toast.className = `toast toast--${type}`;
-    
+
     let icon = "ℹ️";
     if (type === "success") icon = "✨";
     if (type === "error") icon = "⚠️";
@@ -2291,12 +2482,12 @@ function updateTeamsDOM(sourceTeamKey, targetTeamKey) {
         const isWellBalanced = balanceDifference <= 2;
         const balanceLabel = isWellBalanced ? "Well Balanced" : "Needs Adjustment";
         balanceSummary.className = `balance-summary${isWellBalanced ? " balance-summary--good" : ""}`;
-        
+
         const diffStrong = balanceSummary.querySelector("strong");
         if (diffStrong) {
             diffStrong.textContent = `Difference: ${balanceDifference}`;
         }
-        
+
         const badge = balanceSummary.querySelector(".balance-summary__badge");
         if (badge) {
             badge.textContent = balanceLabel;
@@ -2324,7 +2515,7 @@ function updateTeamsDOM(sourceTeamKey, targetTeamKey) {
             list.innerHTML = team.players.map((player) => `
                 <li class="team-player-item" draggable="true" data-player-id="${player.id}" data-team-key="${teamKey}">
                     <div class="team-player">
-                        <strong>${player.name}</strong>
+                        ${renderPlayerIdentity(player)}
                         <span>Rating: ${player.rating}</span>
                     </div>
                 </li>
@@ -2336,7 +2527,7 @@ function updateTeamsDOM(sourceTeamKey, targetTeamKey) {
         if (totalText) {
             totalText.textContent = `Total Rating: ${team.total}`;
         }
-        
+
         // Update balance note if present
         const isWellBalanced = balanceDifference <= 2;
         const balanceNote = teamCard.querySelector(".team-balance-note");
@@ -2499,6 +2690,10 @@ function bindEvents() {
     saveTournamentButton.addEventListener("click", saveTournament);
     exportPdfButton.addEventListener("click", exportTournamentPdf);
     ratingInput.addEventListener("input", updateRatingDisplay);
+    const roleSelect = document.getElementById("role");
+    if (roleSelect) {
+        roleSelect.addEventListener("change", handleRoleSelectionChange);
+    }
     playersPerTeamInput.addEventListener("input", () => {
         updateMatchConfig("customPlayersPerTeam", playersPerTeamInput.value);
     });
@@ -2555,6 +2750,7 @@ function initializeApp() {
     bindEvents();
     applySportSettings(matchConfig.sport);
     updateCustomSettingsVisibility();
+    renderRoleOptions();
     renderModeOptions();
     applyModeRules();
     updateTeamSizeDisplay();

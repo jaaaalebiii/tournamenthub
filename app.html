@@ -111,14 +111,20 @@
             <article class="card">
                 <div class="card__header">
                     <h2>Player Input</h2>
-                    <p>Add a player name and rating from 1 to 10.</p>
+                    <p>Add a player name and rating from 1 to 10. Choose a role for the selected sport unless you are using Custom Sport.</p>
                 </div>
 
                 <div class="player-input-panel">
-                    <label class="field field--floating">
-                        <input type="text" id="name" placeholder=" ">
-                        <span>Player Name</span>
-                    </label>
+                    <div class="player-input-col">
+                        <label class="field field--floating">
+                            <input type="text" id="name" placeholder=" ">
+                            <span>Player Name</span>
+                        </label>
+                        <div id="role-panel" class="field field--select hidden" aria-hidden="true">
+                            <label class="selector-label" for="role">Player Role</label>
+                            <select id="role"></select>
+                        </div>
+                    </div>
 
                     <div class="rating-panel">
                         <div class="rating-panel__top">
@@ -182,13 +188,14 @@
                     aria-labelledby="csv-instructions-title">
                     <h3 id="csv-instructions-title">CSV Format Instructions</h3>
                     <p>Format the file with a header row followed by one player per line.</p>
-                    <pre class="instructions-code">name,rating
-John,8
-Alex,6
-Sam,9</pre>
-                    <ul class="instructions-list">
-                        <li>First row must be headers: <code>name</code>, <code>rating</code></li>
+                    <pre id="csv-instructions-code" class="instructions-code">name,rating,role
+Virat,10,Batsman
+Bumrah,10,Bowler
+Hardik,9,All-Rounder</pre>
+                    <ul class="instructions-list" id="csv-instructions-list">
+                        <li>First row must be headers: <code>name</code>, <code>rating</code>, <code>role</code></li>
                         <li>Rating must be a number from 1 to 10</li>
+                        <li>Role must match the selected sport</li>
                         <li>Do not include empty rows</li>
                     </ul>
                 </section>
