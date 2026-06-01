@@ -56,6 +56,49 @@ const roleShortLabels = {
     "Relay Runner": "REL",
     "Distance Runner": "DIST"
 };
+const sportRoleBalanceConfigs = {
+    cricket: {
+        summaryOrder: [
+            { role: "Batsman", label: "Batsmen" },
+            { role: "Bowler", label: "Bowlers" },
+            { role: "All-Rounder", label: "All-Rounders" },
+            { role: "Wicketkeeper", label: "Wicketkeepers" }
+        ],
+        analysisOrder: [
+            { role: "Wicketkeeper", label: "WK", weight: 15 },
+            { role: "Bowler", label: "Bowlers", weight: 10 },
+            { role: "Batsman", label: "Batsmen", weight: 8 }
+        ],
+        priority: {
+            Wicketkeeper: 0,
+            Bowler: 1,
+            Batsman: 2,
+            "All-Rounder": 3
+        },
+        fallbackRole: "All-Rounder"
+    },
+    football: {
+        summaryOrder: [
+            { role: "Goalkeeper", label: "Goalkeepers" },
+            { role: "Defender", label: "Defenders" },
+            { role: "Midfielder", label: "Midfielders" },
+            { role: "Forward", label: "Forwards" }
+        ],
+        analysisOrder: [
+            { role: "Goalkeeper", label: "Goalkeepers", weight: 16 },
+            { role: "Defender", label: "Defenders", weight: 12 },
+            { role: "Midfielder", label: "Midfielders", weight: 9 },
+            { role: "Forward", label: "Forwards", weight: 7 }
+        ],
+        priority: {
+            Goalkeeper: 0,
+            Defender: 1,
+            Midfielder: 2,
+            Forward: 3
+        },
+        fallbackRole: null
+    }
+};
 let players = loadPlayers();
 let matchConfig = getDefaultMatchConfig();
 matchConfig.customPlayersPerTeamInput = "";
@@ -195,6 +238,51 @@ function isValidRoleForSport(sport, role) {
     }
 
     return getRoleOptionsForSport(sport).includes(role);
+}
+
+function isCricketSport() {
+    return matchConfig.sport === "cricket";
+}
+
+function isFootballSport() {
+    return matchConfig.sport === "football";
+}
+
+function getSportRoleBalanceConfig(sport) {
+    return sportRoleBalanceConfigs[sport] || null;
+}
+
+function getRoleSummaryRows(sport) {
+    const config = getSportRoleBalanceConfig(sport);
+
+    return config?.summaryOrder || [];
+}
+
+function getRoleAnalysisRows(sport) {
+    const config = getSportRoleBalanceConfig(sport);
+
+    return config?.analysisOrder || [];
+}
+
+function createRoleCountMap(rows) {
+    return rows.reduce((acc, row) => {
+        acc[row.role] = 0;
+        return acc;
+    }, {});
+}
+
+function countPlayersForRoles(teamPlayers, rows, fallbackRole = null) {
+    const counts = createRoleCountMap(rows);
+
+    teamPlayers.forEach((player) => {
+        const role = player.role || fallbackRole;
+
+        if (role && Object.prototype.hasOwnProperty.call(counts, role)) {
+            counts[role] += 1;
+        }
+    });
+
+    return counts;
 }
 
 function getRoleShortLabel(role) {
@@ -642,6 +730,158 @@ function getBalanceStatus(balanceDifference) {
     };
 }
 
+function getRoleBalanceStatus(score) {
+    if (score >= 95) {
+        return {
+            label: "Excellent",
+            className: "stat-card__badge--excellent"
+        };
+    }
+
+    if (score >= 80) {
+        return {
+            label: "Good",
+            className: "stat-card__badge--good"
+        };
+    }
+
+    if (score >= 60) {
+        return {
+            label: "Fair",
+            className: "stat-card__badge--warning"
+        };
+    }
+
+    return {
+        label: "Needs Improvement",
+        className: "stat-card__badge--warning"
+    };
+}
+
+function createCricketRoleCounts() {
+    return {
+        Wicketkeeper: 0,
+        Bowler: 0,
+        Batsman: 0,
+        "All-Rounder": 0
+    };
+}
+
+function countCricketRoles(teamPlayers) {
+    const counts = createCricketRoleCounts();
+
+    teamPlayers.forEach((player) => {
+        const role = player.role || "All-Rounder";
+
+        if (Object.prototype.hasOwnProperty.call(counts, role)) {
+            counts[role] += 1;
+        }
+    });
+
+    return counts;
+}
+
+function getSportRolePriority(sport, role) {
+    const config = getSportRoleBalanceConfig(sport);
+
+    if (!config) {
+        return Number.MAX_SAFE_INTEGER;
+    }
+
+    return Object.prototype.hasOwnProperty.call(config.priority, role)
+        ? config.priority[role]
+        : Number.MAX_SAFE_INTEGER;
+}
+
+function getCricketRolePriority(role) {
+    return getSportRolePriority("cricket", role);
+}
+
+function createTeamRoleSummary(team, sport = matchConfig.sport) {
+    const config = getSportRoleBalanceConfig(sport);
+
+    if (!config) {
+        return "";
+    }
+
+    const counts = countPlayersForRoles(team.players, config.summaryOrder, config.fallbackRole);
+
+    return `
+        <div class="team-role-summary">
+            <div class="team-role-summary__header">Role Summary</div>
+            <div class="team-role-summary__list">
+                ${config.summaryOrder.map((entry) => `
+                    <div class="team-role-summary__item">
+                        <span class="team-role-summary__label">${entry.label}</span>
+                        <span class="team-role-summary__rule" aria-hidden="true"></span>
+                        <strong class="team-role-summary__count">${counts[entry.role] || 0}</strong>
+                    </div>
+                `).join("")}
+            </div>
+        </div>
+    `;
+}
+
+function calculateSportRoleBalance(generatedTeams, sport) {
+    const config = getSportRoleBalanceConfig(sport);
+
+    if (!config) {
+        return null;
+    }
+
+    const teamRoleCounts = generatedTeams.map((team) => countPlayersForRoles(team.players, config.analysisOrder, config.fallbackRole));
+
+    if (teamRoleCounts.length === 0) {
+        return null;
+    }
+
+    const summaryForRole = (role) => {
+        const values = teamRoleCounts.map((counts) => counts[role] || 0);
+        const min = Math.min(...values);
+        const max = Math.max(...values);
+
+        return {
+            values,
+            min,
+            max,
+            diff: max - min,
+            display: values.join(" vs ")
+        };
+    };
+
+    const rows = config.analysisOrder.map((entry) => summaryForRole(entry.role));
+    const balanceDifference = Math.max(...generatedTeams.map((team) => team.total)) - Math.min(...generatedTeams.map((team) => team.total));
+    const score = Math.max(
+        0,
+        Math.min(
+            100,
+            Math.round(
+                100
+                - config.analysisOrder.reduce((sum, entry) => sum + ((summaryForRole(entry.role).diff || 0) * (entry.weight || 0)), 0)
+                - Math.min(20, balanceDifference * 1.5)
+            )
+        )
+    );
+
+    return {
+        rows: config.analysisOrder.map((entry) => {
+            const row = summaryForRole(entry.role);
+
+            return {
+                role: entry.role,
+                label: entry.label,
+                display: row.display,
+                diff: row.diff,
+                min: row.min,
+                max: row.max
+            };
+        }),
+        balanceDifference,
+        score,
+        status: getRoleBalanceStatus(score)
+    };
+}
+
 function calculateTournamentStatistics() {
     const totalPlayers = players.length;
     const totalTeams = latestGeneratedTeams.length;
@@ -663,6 +903,9 @@ function calculateTournamentStatistics() {
     const totalMatchesGenerated = latestTournament?.rounds
         ? latestTournament.rounds.reduce((sum, round) => sum + round.matches.length, 0)
         : 0;
+    const roleBalanceAnalysis = getSportRoleBalanceConfig(matchConfig.sport) && totalTeams > 0
+        ? calculateSportRoleBalance(latestGeneratedTeams, matchConfig.sport)
+        : null;
 
     return {
         totalPlayers,
@@ -674,7 +917,8 @@ function calculateTournamentStatistics() {
         weakestTeam,
         balanceDifference,
         balanceStatus: getBalanceStatus(balanceDifference),
-        totalMatchesGenerated
+        totalMatchesGenerated,
+        roleBalanceAnalysis
     };
 }
 
@@ -725,6 +969,39 @@ function createTeamAnalyticsCard(team, icon, roleLabel, statusDetail) {
     `;
 }
 
+function createRoleBalanceCard(roleBalanceAnalysis) {
+    if (!roleBalanceAnalysis) {
+        return "";
+    }
+
+    return `
+        <article class="team-analytics-card team-analytics-card--role-balance">
+            <div class="team-analytics-card__top">
+                <div>
+                    <p class="team-analytics-card__label">Role Balance Analysis</p>
+                    <h3 class="team-analytics-card__title">${roleBalanceAnalysis.status.label}</h3>
+                </div>
+                <span class="team-analytics-card__icon" aria-hidden="true">RB</span>
+            </div>
+            <div class="team-analytics-card__detail">
+                Roles are distributed before the final rating pass so both structure and strength stay balanced.
+            </div>
+            <div class="team-analytics-list">
+                ${roleBalanceAnalysis.rows.map((row) => `
+                    <div class="team-analytics-list__row">
+                        <span>${row.label}</span>
+                        <strong>${row.display}</strong>
+                    </div>
+                `).join("")}
+                <div class="team-analytics-list__row">
+                    <span>Role Balance Score</span>
+                    <strong>${roleBalanceAnalysis.score}</strong>
+                </div>
+            </div>
+        </article>
+    `;
+}
+
 function renderStatisticsDashboard() {
     const { statisticsOverview, statisticsTeamAnalytics } = getAppElements();
 
@@ -755,11 +1032,21 @@ function renderStatisticsDashboard() {
         `Rating difference between ${strongestTeamName} and ${weakestTeamName}`,
         `<span class="stat-card__badge ${statistics.balanceStatus.className}">${statistics.balanceStatus.label}</span>`
     )}
+        ${statistics.roleBalanceAnalysis
+            ? createStatisticsCard(
+                "RB",
+                "Role Balance Score",
+                statistics.roleBalanceAnalysis.score,
+                "Cricket role distribution across generated teams",
+                `<span class="stat-card__badge ${statistics.roleBalanceAnalysis.status.className}">${statistics.roleBalanceAnalysis.status.label}</span>`
+            )
+            : ""}
         ${createStatisticsCard("MG", "Total Matches Generated", statistics.totalMatchesGenerated, "Bracket and fixture matches currently created")}
     `;
 
     if (statistics.strongestTeam && statistics.weakestTeam) {
         statisticsTeamAnalytics.innerHTML = `
+            ${statistics.roleBalanceAnalysis ? createRoleBalanceCard(statistics.roleBalanceAnalysis) : ""}
             ${createTeamAnalyticsCard(
             statistics.strongestTeam,
             "ST",
@@ -801,6 +1088,7 @@ function renderStatisticsDashboard() {
     }
 
     statisticsTeamAnalytics.innerHTML = `
+        ${statistics.roleBalanceAnalysis ? createRoleBalanceCard(statistics.roleBalanceAnalysis) : ""}
         <article class="team-analytics-card">
             <div class="team-analytics-card__top">
                 <div>
@@ -1222,29 +1510,19 @@ function renderPlayers() {
     recentPlayerId = null;
 }
 
-function generateTeams() {
-    if (isCustomSport() && !validateCustomSportSettings()) {
-        return;
-    }
-
-    const { playersPerTeam, teamCount } = getActiveTeamSettings();
-    const requiredPlayers = playersPerTeam * teamCount;
-
-    if (players.length < requiredPlayers) {
-        showConfigMessage("Not enough players for selected sport", "error");
-        return;
-    }
-
-    clearConfigMessage();
-
-    const sortedPlayers = [...players]
-        .sort((a, b) => b.rating - a.rating)
-        .slice(0, requiredPlayers);
-    const generatedTeams = Array.from({ length: teamCount }, (_, index) => ({
+function createEmptyTeams(teamCount) {
+    return Array.from({ length: teamCount }, (_, index) => ({
         key: `team-${index}`,
         players: [],
         total: 0
     }));
+}
+
+function buildRatingBalancedTeams(poolPlayers, playersPerTeam, teamCount) {
+    const sortedPlayers = [...poolPlayers]
+        .sort((a, b) => b.rating - a.rating)
+        .slice(0, playersPerTeam * teamCount);
+    const generatedTeams = createEmptyTeams(teamCount);
 
     sortedPlayers.forEach((player) => {
         const targetTeam = generatedTeams.reduce((lowestTotalTeam, currentTeam) => {
@@ -1264,6 +1542,182 @@ function generateTeams() {
         targetTeam.players.push(player);
         targetTeam.total += player.rating;
     });
+
+    return generatedTeams;
+}
+
+function selectRoleBalancedTeam(teams, player, role, playersPerTeam, sport) {
+    const availableTeams = teams.filter((team) => team.players.length < playersPerTeam);
+
+    if (availableTeams.length === 0) {
+        return null;
+    }
+
+    const roleRows = getRoleSummaryRows(sport);
+
+    return availableTeams.reduce((bestTeam, currentTeam) => {
+        const bestCounts = countPlayersForRoles(bestTeam.players, roleRows, getSportRoleBalanceConfig(sport)?.fallbackRole);
+        const currentCounts = countPlayersForRoles(currentTeam.players, roleRows, getSportRoleBalanceConfig(sport)?.fallbackRole);
+        const currentRoleCount = currentCounts[role] || 0;
+        const bestRoleCount = bestCounts[role] || 0;
+
+        if (currentRoleCount !== bestRoleCount) {
+            return currentRoleCount < bestRoleCount ? currentTeam : bestTeam;
+        }
+
+        if (currentTeam.total !== bestTeam.total) {
+            return currentTeam.total < bestTeam.total ? currentTeam : bestTeam;
+        }
+
+        if (currentTeam.players.length !== bestTeam.players.length) {
+            return currentTeam.players.length < bestTeam.players.length ? currentTeam : bestTeam;
+        }
+
+        return currentTeam.key < bestTeam.key ? currentTeam : bestTeam;
+    }, availableTeams[0]);
+}
+
+function buildFootballBalancedTeams(poolPlayers, playersPerTeam, teamCount) {
+    const config = getSportRoleBalanceConfig("football");
+    const generatedTeams = createEmptyTeams(teamCount);
+    const orderedRoles = config?.summaryOrder.map((entry) => entry.role) || [];
+
+    orderedRoles.forEach((role) => {
+        const rolePlayers = poolPlayers
+            .filter((player) => player.role === role)
+            .sort((a, b) => {
+                if (b.rating !== a.rating) {
+                    return b.rating - a.rating;
+                }
+
+                return a.name.localeCompare(b.name);
+            });
+
+        rolePlayers.forEach((player) => {
+            const targetTeam = selectRoleBalancedTeam(generatedTeams, player, role, playersPerTeam, "football");
+
+            if (!targetTeam) {
+                return;
+            }
+
+            targetTeam.players.push(player);
+            targetTeam.total += player.rating;
+        });
+    });
+
+    const assignedPlayerIds = new Set(generatedTeams.flatMap((team) => team.players.map((player) => player.id)));
+    const leftoverPlayers = poolPlayers
+        .filter((player) => !assignedPlayerIds.has(player.id))
+        .sort((a, b) => {
+            if (b.rating !== a.rating) {
+                return b.rating - a.rating;
+            }
+
+            return a.name.localeCompare(b.name);
+        });
+
+    leftoverPlayers.forEach((player) => {
+        const targetTeam = selectRoleBalancedTeam(generatedTeams, player, player.role || "Forward", playersPerTeam, "football");
+
+        if (!targetTeam) {
+            return;
+        }
+
+        targetTeam.players.push(player);
+        targetTeam.total += player.rating;
+    });
+
+    return generatedTeams;
+}
+
+function selectCricketTeamForPlayer(teams, player, playersPerTeam) {
+    const availableTeams = teams.filter((team) => team.players.length < playersPerTeam);
+
+    if (availableTeams.length === 0) {
+        return null;
+    }
+
+    const roleName = player.role || "All-Rounder";
+
+    return availableTeams.reduce((bestTeam, currentTeam) => {
+        const bestCounts = countCricketRoles(bestTeam.players);
+        const currentCounts = countCricketRoles(currentTeam.players);
+        const bestRoleCount = bestCounts[roleName] || 0;
+        const currentRoleCount = currentCounts[roleName] || 0;
+
+        if (currentRoleCount !== bestRoleCount) {
+            return currentRoleCount < bestRoleCount ? currentTeam : bestTeam;
+        }
+
+        const currentAllRounders = currentCounts["All-Rounder"] || 0;
+        const bestAllRounders = bestCounts["All-Rounder"] || 0;
+
+        if (roleName === "All-Rounder" && currentAllRounders !== bestAllRounders) {
+            return currentAllRounders < bestAllRounders ? currentTeam : bestTeam;
+        }
+
+        if (currentTeam.total !== bestTeam.total) {
+            return currentTeam.total < bestTeam.total ? currentTeam : bestTeam;
+        }
+
+        if (currentTeam.players.length !== bestTeam.players.length) {
+            return currentTeam.players.length < bestTeam.players.length ? currentTeam : bestTeam;
+        }
+
+        return currentTeam.key < bestTeam.key ? currentTeam : bestTeam;
+    }, availableTeams[0]);
+}
+
+function buildCricketBalancedTeams(poolPlayers, playersPerTeam, teamCount) {
+    const generatedTeams = createEmptyTeams(teamCount);
+    const orderedPlayers = [...poolPlayers].sort((a, b) => {
+        const rolePriorityDiff = getCricketRolePriority(a.role || "All-Rounder") - getCricketRolePriority(b.role || "All-Rounder");
+
+        if (rolePriorityDiff !== 0) {
+            return rolePriorityDiff;
+        }
+
+        if (b.rating !== a.rating) {
+            return b.rating - a.rating;
+        }
+
+        return a.name.localeCompare(b.name);
+    });
+
+    orderedPlayers.forEach((player) => {
+        const targetTeam = selectCricketTeamForPlayer(generatedTeams, player, playersPerTeam);
+
+        if (!targetTeam) {
+            return;
+        }
+
+        targetTeam.players.push(player);
+        targetTeam.total += player.rating;
+    });
+
+    return generatedTeams;
+}
+
+function generateTeams() {
+    if (isCustomSport() && !validateCustomSportSettings()) {
+        return;
+    }
+
+    const { playersPerTeam, teamCount } = getActiveTeamSettings();
+    const requiredPlayers = playersPerTeam * teamCount;
+
+    if (players.length < requiredPlayers) {
+        showConfigMessage("Not enough players for selected sport", "error");
+        return;
+    }
+
+    clearConfigMessage();
+
+    const generatedTeams = isCricketSport()
+        ? buildCricketBalancedTeams(players, playersPerTeam, teamCount)
+        : isFootballSport()
+            ? buildFootballBalancedTeams(players, playersPerTeam, teamCount)
+            : buildRatingBalancedTeams(players, playersPerTeam, teamCount);
 
     renderTeams(generatedTeams);
 }
@@ -1693,6 +2147,7 @@ function createTeamCard(team, highestTotal, balanceDifference) {
                     </li>
                 `).join("")}
             </ul>
+            ${createTeamRoleSummary(team, matchConfig.sport)}
             ${balanceNote}
             <div class="team-total">Total Rating: ${total}</div>
         </article>
@@ -2520,6 +2975,11 @@ function updateTeamsDOM(sourceTeamKey, targetTeamKey) {
                     </div>
                 </li>
             `).join("");
+        }
+
+        const roleSummary = teamCard.querySelector(".team-role-summary");
+        if (roleSummary) {
+            roleSummary.outerHTML = createTeamRoleSummary(team, matchConfig.sport);
         }
 
         // Update total rating summary
