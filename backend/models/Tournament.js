@@ -9,6 +9,9 @@ const tournamentSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    matchType: {
+        type: String
+    },
     createdAt: {
         type: Date,
         default: Date.now
