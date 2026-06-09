@@ -283,6 +283,71 @@ Hardik,9,All-Rounder</pre>
         </section>
     </main>
 
+    <div id="delete-confirm-modal" class="hub-modal hidden" role="dialog" aria-modal="true" aria-labelledby="delete-confirm-title" aria-describedby="delete-confirm-message">
+        <div class="hub-modal__backdrop" data-modal-close="delete"></div>
+        <div class="hub-modal__dialog" role="document">
+            <div class="hub-modal__header">
+                <h3 id="delete-confirm-title">Delete Tournament</h3>
+                <button class="icon-button" type="button" data-modal-close="delete" aria-label="Close delete confirmation">×</button>
+            </div>
+            <p id="delete-confirm-message" class="hub-modal__body">
+                Are you sure you want to delete this tournament? This action cannot be undone.
+            </p>
+            <div class="hub-modal__actions">
+                <button class="btn btn-secondary" id="delete-confirm-cancel" type="button">Cancel</button>
+                <button class="btn btn-danger" id="delete-confirm-delete" type="button">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="edit-tournament-modal" class="hub-modal hidden" role="dialog" aria-modal="true" aria-labelledby="edit-tournament-title" aria-describedby="edit-tournament-description">
+        <div class="hub-modal__backdrop" data-modal-close="edit"></div>
+        <div class="hub-modal__dialog hub-modal__dialog--wide" role="document">
+            <div class="hub-modal__header">
+                <div>
+                    <h3 id="edit-tournament-title">Edit Tournament</h3>
+                    <p id="edit-tournament-description" class="hub-modal__subtitle">Update the saved tournament details without changing its structure.</p>
+                </div>
+                <button class="icon-button" type="button" data-modal-close="edit" aria-label="Close edit modal">×</button>
+            </div>
+            <form id="edit-tournament-form" class="hub-modal__form">
+                <div class="hub-modal__field">
+                    <label for="edit-tournament-name">Tournament Name</label>
+                    <input id="edit-tournament-name" type="text" class="text-input" autocomplete="off" />
+                </div>
+                <div class="hub-modal__field">
+                    <label for="edit-match-type">Match Type</label>
+                    <select id="edit-match-type" class="select-input">
+                        <option value="Friendly">Friendly</option>
+                        <option value="Knockout">Knockout</option>
+                        <option value="League">League</option>
+                    </select>
+                </div>
+                <div class="hub-modal__read-only-grid">
+                    <div class="hub-modal__field">
+                        <label for="edit-sport">Sport</label>
+                        <input id="edit-sport" type="text" class="text-input" disabled />
+                    </div>
+                    <div class="hub-modal__field">
+                        <label for="edit-players-per-team">Players Per Team</label>
+                        <input id="edit-players-per-team" type="text" class="text-input" disabled />
+                    </div>
+                    <div class="hub-modal__field">
+                        <label for="edit-team-count">Number Of Teams</label>
+                        <input id="edit-team-count" type="text" class="text-input" disabled />
+                    </div>
+                </div>
+                <div class="hub-modal__actions hub-modal__actions--split">
+                    <button class="btn btn-secondary" id="manage-players-btn" type="button">👥 Manage Players</button>
+                    <div class="hub-modal__actions-right">
+                        <button class="btn btn-secondary" type="button" data-modal-close="edit">Cancel</button>
+                        <button class="btn btn-primary" type="submit">Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <footer class="footer-shell footer-shell--app">
         <section class="footer-card">
             <div class="footer-grid">

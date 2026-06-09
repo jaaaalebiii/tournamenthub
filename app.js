@@ -1,5 +1,8 @@
 const storageKey = "players";
 const tournamentStorageKey = "saved-tournaments";
+const tournamentApiUrl = "http://localhost:5000/api/tournaments";
+const savedTournamentsEmptyMessage = "No tournaments saved yet. Generate teams, add a name, and save one here.";
+const tournamentMatchTypes = ["Friendly", "Knockout", "League"];
 const sportRules = {
     cricket: {
         teamSize: 11,
@@ -99,6 +102,9 @@ const sportRoleBalanceConfigs = {
         fallbackRole: null
     }
 };
+// Frontend tournament state lives in these variables:
+// players, matchConfig, teamNames, latestGeneratedTeams, and latestTournament.
+// Fixtures, matches, bracket, and winners are all derived from latestTournament.rounds.
 let players = loadPlayers();
 let matchConfig = getDefaultMatchConfig();
 matchConfig.customPlayersPerTeamInput = "";
@@ -107,6 +113,11 @@ let teamNames = {};
 let recentPlayerId = null;
 let latestGeneratedTeams = [];
 let latestTournament = null;
+let savedTournamentsCache = [];
+let pendingDeleteTournament = null;
+let deletedTournamentBackup = null;
+let deleteUndoTimerId = null;
+let activeEditTournament = null;
 
 function createPlayerId() {
     return `player-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -139,7 +150,7 @@ function savePlayers() {
     localStorage.setItem(storageKey, JSON.stringify(players));
 }
 
-function loadSavedTournaments() {
+function loadSavedTournamentsFromStorage() {
     const savedTournaments = localStorage.getItem(tournamentStorageKey);
 
     if (!savedTournaments) {
@@ -157,6 +168,185 @@ function loadSavedTournaments() {
 
 function saveSavedTournaments(tournaments) {
     localStorage.setItem(tournamentStorageKey, JSON.stringify(tournaments));
+}
+
+function normalizeTournamentRecord(tournament) {
+    if (!tournament || typeof tournament !== "object") {
+        return null;
+    }
+
+    return {
+        ...tournament,
+        id: tournament.id || tournament._id || "",
+        _id: tournament._id || tournament.id || ""
+    };
+}
+
+function getTournamentRecordKey(tournament) {
+    return String(tournament?._id || tournament?.id || "");
+}
+
+function mergeTournamentRecords(apiTournament, localTournament) {
+    const normalizedApiTournament = normalizeTournamentRecord(apiTournament);
+    const normalizedLocalTournament = normalizeTournamentRecord(localTournament);
+
+    if (!normalizedApiTournament && !normalizedLocalTournament) {
+        return null;
+    }
+
+    const mergedTournament = {
+        ...(normalizedLocalTournament || {}),
+        ...(normalizedApiTournament || {})
+    };
+
+    const stableId = normalizedApiTournament?.id
+        || normalizedApiTournament?._id
+        || normalizedLocalTournament?.id
+        || normalizedLocalTournament?._id
+        || "";
+
+    mergedTournament.id = stableId;
+    mergedTournament._id = stableId;
+
+    if (normalizedLocalTournament?.matchConfig) {
+        mergedTournament.matchConfig = cloneTournamentData(normalizedLocalTournament.matchConfig);
+    }
+
+    if (normalizedLocalTournament?.players) {
+        mergedTournament.players = cloneTournamentData(normalizedLocalTournament.players);
+    }
+
+    if (normalizedLocalTournament?.teams) {
+        mergedTournament.teams = cloneTournamentData(normalizedLocalTournament.teams);
+    }
+
+    if (normalizedLocalTournament?.generatedTeams) {
+        mergedTournament.generatedTeams = cloneTournamentData(normalizedLocalTournament.generatedTeams);
+    }
+
+    if (normalizedLocalTournament?.teamNames) {
+        mergedTournament.teamNames = cloneTournamentData(normalizedLocalTournament.teamNames);
+    }
+
+    if (normalizedLocalTournament?.fixtures) {
+        mergedTournament.fixtures = cloneTournamentData(normalizedLocalTournament.fixtures);
+    }
+
+    if (normalizedLocalTournament?.matches) {
+        mergedTournament.matches = cloneTournamentData(normalizedLocalTournament.matches);
+    }
+
+    if (normalizedLocalTournament?.tournamentState) {
+        mergedTournament.tournamentState = cloneTournamentData(normalizedLocalTournament.tournamentState);
+    }
+
+    if (normalizedLocalTournament?.bracket) {
+        mergedTournament.bracket = cloneTournamentData(normalizedLocalTournament.bracket);
+    }
+
+    if (normalizedLocalTournament?.winners) {
+        mergedTournament.winners = cloneTournamentData(normalizedLocalTournament.winners);
+    }
+
+    mergedTournament.savedAt = normalizedLocalTournament?.savedAt
+        || normalizedApiTournament?.createdAt
+        || normalizedApiTournament?.savedAt
+        || mergedTournament.savedAt
+        || null;
+
+    mergedTournament.matchType = normalizedLocalTournament?.matchType
+        || normalizedLocalTournament?.matchConfig?.matchType
+        || normalizedApiTournament?.matchType
+        || mergedTournament.matchType
+        || "Friendly";
+
+    mergedTournament.playersPerTeam = normalizedLocalTournament?.playersPerTeam
+        || normalizedApiTournament?.playersPerTeam
+        || mergedTournament.playersPerTeam
+        || null;
+
+    mergedTournament.numberOfTeams = normalizedLocalTournament?.numberOfTeams
+        || normalizedApiTournament?.numberOfTeams
+        || mergedTournament.numberOfTeams
+        || null;
+
+    mergedTournament.sport = normalizedLocalTournament?.sport
+        || normalizedApiTournament?.sport
+        || mergedTournament.sport
+        || "custom";
+
+    if (!mergedTournament.name && normalizedApiTournament?.name) {
+        mergedTournament.name = normalizedApiTournament.name;
+    }
+
+    return mergedTournament;
+}
+
+async function loadSavedTournaments() {
+    try {
+        const response = await fetch(tournamentApiUrl);
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || "Unable to load saved tournaments.");
+        }
+
+        const localTournamentLookup = new Map(
+            loadSavedTournamentsFromStorage()
+                .map(normalizeTournamentRecord)
+                .filter(Boolean)
+                .map((tournament) => [getTournamentRecordKey(tournament), tournament])
+        );
+
+        const tournaments = Array.isArray(responseData.tournaments)
+            ? responseData.tournaments
+                .map((tournament) => mergeTournamentRecords(tournament, localTournamentLookup.get(getTournamentRecordKey(tournament))))
+                .filter(Boolean)
+            : [];
+
+        console.log("Loaded tournaments from API");
+        return tournaments;
+    } catch (error) {
+        console.error("Failed to load tournaments from API:", error);
+        return loadSavedTournamentsFromStorage().map(normalizeTournamentRecord).filter(Boolean);
+    }
+}
+
+function syncSavedTournamentCache(nextTournaments) {
+    savedTournamentsCache = nextTournaments
+        .map(normalizeTournamentRecord)
+        .filter(Boolean);
+}
+
+function getSavedTournamentFromStorage(tournamentId) {
+    return loadSavedTournamentsFromStorage().find((tournament) => (
+        tournament.id === tournamentId || tournament._id === tournamentId
+    )) || null;
+}
+
+function upsertSavedTournamentToStorage(tournament) {
+    const normalizedTournament = normalizeTournamentRecord(tournament);
+
+    if (!normalizedTournament) {
+        return;
+    }
+
+    const savedTournaments = loadSavedTournamentsFromStorage();
+    const nextTournaments = savedTournaments.filter((entry) => (
+        entry.id !== normalizedTournament.id && entry._id !== normalizedTournament.id
+    ));
+
+    nextTournaments.unshift(normalizedTournament);
+    saveSavedTournaments(nextTournaments);
+}
+
+function removeSavedTournamentFromStorage(tournamentId) {
+    const savedTournaments = loadSavedTournamentsFromStorage();
+    const nextTournaments = savedTournaments.filter((entry) => (
+        entry.id !== tournamentId && entry._id !== tournamentId
+    ));
+
+    saveSavedTournaments(nextTournaments);
 }
 
 function getAppElements() {
@@ -196,6 +386,47 @@ function getAppElements() {
         configSummary: document.getElementById("config-summary"),
         optionPills: document.querySelectorAll(".option-pill")
     };
+}
+
+function getModalElements() {
+    return {
+        deleteConfirmModal: document.getElementById("delete-confirm-modal"),
+        deleteConfirmMessage: document.getElementById("delete-confirm-message"),
+        deleteConfirmCancelButton: document.getElementById("delete-confirm-cancel"),
+        deleteConfirmDeleteButton: document.getElementById("delete-confirm-delete"),
+        editTournamentModal: document.getElementById("edit-tournament-modal"),
+        editTournamentForm: document.getElementById("edit-tournament-form"),
+        editTournamentNameInput: document.getElementById("edit-tournament-name"),
+        editMatchTypeSelect: document.getElementById("edit-match-type"),
+        editSportInput: document.getElementById("edit-sport"),
+        editPlayersPerTeamInput: document.getElementById("edit-players-per-team"),
+        editTeamCountInput: document.getElementById("edit-team-count"),
+        managePlayersButton: document.getElementById("manage-players-btn")
+    };
+}
+
+function openModal(modalElement) {
+    if (!modalElement) {
+        return;
+    }
+
+    modalElement.classList.remove("hidden");
+    document.body.classList.add("modal-open");
+}
+
+function closeModal(modalElement) {
+    if (!modalElement) {
+        return;
+    }
+
+    modalElement.classList.add("hidden");
+
+    const anyModalOpen = !document.getElementById("delete-confirm-modal")?.classList.contains("hidden")
+        || !document.getElementById("edit-tournament-modal")?.classList.contains("hidden");
+
+    if (!anyModalOpen) {
+        document.body.classList.remove("modal-open");
+    }
 }
 
 function isCustomSport() {
@@ -589,6 +820,71 @@ function clearTournamentSaveMessage() {
 
 function cloneTournamentData(data) {
     return JSON.parse(JSON.stringify(data));
+}
+
+function getTournamentWinners(tournamentState) {
+    return tournamentState?.rounds?.flatMap((round) => {
+        if (!Array.isArray(round.matches)) {
+            return [];
+        }
+
+        return round.matches
+            .filter((match) => match.winnerSide)
+            .map((match) => ({
+                matchId: match.id,
+                winnerSide: match.winnerSide,
+                winnerName: resolveParticipantName(match[match.winnerSide], tournamentState)
+            }));
+    }) || [];
+}
+
+function getTournamentFixtures(tournamentState) {
+    return cloneTournamentData(tournamentState?.rounds || []);
+}
+
+function getTournamentMatches(tournamentState) {
+    return tournamentState?.rounds?.flatMap((round) => (
+        Array.isArray(round.matches) ? round.matches : []
+    )) || [];
+}
+
+function restoreTournamentSnapshot(savedTournament) {
+    const normalizedTournament = normalizeTournamentRecord(savedTournament);
+
+    if (!normalizedTournament) {
+        return null;
+    }
+
+    players = Array.isArray(normalizedTournament.players)
+        ? normalizedTournament.players.map(normalizePlayer)
+        : [];
+    savePlayers();
+    renderPlayers();
+
+    teamNames = cloneTournamentData(normalizedTournament.teamNames || {});
+    applyLoadedMatchConfig({
+        ...normalizedTournament.matchConfig,
+        name: normalizedTournament.name || "",
+        sport: normalizedTournament.sport || matchConfig.sport
+    });
+
+    const savedFixtures = Array.isArray(normalizedTournament.fixtures) ? normalizedTournament.fixtures : [];
+    latestGeneratedTeams = cloneTournamentData(normalizedTournament.generatedTeams || normalizedTournament.teams || []);
+    latestTournament = cloneTournamentData(
+        normalizedTournament.tournamentState
+        || normalizedTournament.bracket
+        || (savedFixtures.some((round) => Array.isArray(round?.matches)) ? { rounds: cloneTournamentData(savedFixtures) } : null)
+        || null
+    );
+
+    if (latestGeneratedTeams.length > 0) {
+        renderTeams(latestGeneratedTeams, { preserveTournamentState: true });
+    } else {
+        clearTeams();
+    }
+
+    renderStatisticsDashboard();
+    return normalizedTournament;
 }
 
 function getCustomInputValue(input) {
@@ -1755,33 +2051,33 @@ function handleTeamNameBlur(event) {
 }
 
 function createTournamentSnapshot() {
+    const activeTeamSettings = getActiveTeamSettings();
+    const tournamentState = latestTournament ? cloneTournamentData(latestTournament) : null;
+
+    // Save flow: capture the current frontend state, including the tournament rounds
+    // that drive fixtures, bracket progression, and winners, so MongoDB can reload it later.
     return {
         id: `tournament-${Date.now()}`,
         name: getTournamentDisplayName(),
         savedAt: new Date().toISOString(),
         sport: matchConfig.sport,
         matchType: matchConfig.matchType,
+        playersPerTeam: activeTeamSettings.playersPerTeam,
+        numberOfTeams: activeTeamSettings.teamCount,
         matchConfig: cloneTournamentData(matchConfig),
         players: cloneTournamentData(players),
+        generatedTeams: cloneTournamentData(latestGeneratedTeams),
         teams: cloneTournamentData(latestGeneratedTeams),
         teamNames: cloneTournamentData(teamNames),
-        matches: cloneTournamentData(latestTournament?.rounds || []),
-        tournamentState: cloneTournamentData(latestTournament),
-        winners: cloneTournamentData(
-            latestTournament?.rounds.flatMap((round) => (
-                round.matches
-                    .filter((match) => match.winnerSide)
-                    .map((match) => ({
-                        matchId: match.id,
-                        winnerSide: match.winnerSide,
-                        winnerName: resolveParticipantName(match[match.winnerSide], latestTournament)
-                    }))
-            )) || []
-        )
+        fixtures: getTournamentFixtures(tournamentState),
+        matches: cloneTournamentData(getTournamentMatches(tournamentState)),
+        bracket: cloneTournamentData(tournamentState),
+        tournamentState,
+        winners: cloneTournamentData(getTournamentWinners(tournamentState))
     };
 }
 
-function saveTournament() {
+async function saveTournament() {
     const { tournamentNameInput } = getAppElements();
     const tournamentName = tournamentNameInput?.value.trim() || "";
 
@@ -1800,12 +2096,52 @@ function saveTournament() {
     }
 
     const nextTournament = createTournamentSnapshot();
-    const savedTournaments = loadSavedTournaments();
+    // Send the full tournament snapshot to the API so MongoDB stores everything, not just the name and sport.
+    const tournamentPayload = {
+        ...cloneTournamentData(nextTournament),
+        id: undefined
+    };
 
-    savedTournaments.unshift(nextTournament);
-    saveSavedTournaments(savedTournaments);
-    renderSavedTournaments();
-    showTournamentSaveMessage(`Saved "${tournamentName}" successfully.`, "success");
+    try {
+        const response = await fetch("http://localhost:5000/api/tournaments", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(tournamentPayload)
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || "Failed to save tournament.");
+        }
+
+        console.log("Tournament saved to API:", responseData);
+
+        const apiTournament = normalizeTournamentRecord(responseData.tournament);
+        if (apiTournament?.id) {
+            nextTournament.id = apiTournament.id;
+            nextTournament._id = apiTournament.id;
+        }
+
+        if (apiTournament?.createdAt) {
+            nextTournament.savedAt = apiTournament.createdAt;
+        }
+
+        const savedTournaments = loadSavedTournamentsFromStorage();
+        const savedSnapshot = mergeTournamentRecords(responseData.tournament, nextTournament);
+        savedTournaments.unshift(savedSnapshot || {
+            ...nextTournament,
+            ...cloneTournamentData(responseData.tournament)
+        });
+        saveSavedTournaments(savedTournaments);
+        await renderSavedTournaments();
+        showTournamentSaveMessage(`Saved "${tournamentName}" successfully.`, "success");
+    } catch (error) {
+        console.error("Tournament save error:", error);
+        showTournamentSaveMessage(error.message || "Unable to save tournament right now. Please try again.", "error");
+    }
 }
 
 function applyLoadedMatchConfig(savedConfig) {
@@ -1835,68 +2171,364 @@ function applyLoadedMatchConfig(savedConfig) {
     clearConfigMessage();
 }
 
-function loadTournament(tournamentId) {
-    const savedTournament = loadSavedTournaments().find((tournament) => tournament.id === tournamentId);
+async function loadTournamentById(tournamentId, options = {}) {
+    const feedbackMode = options.feedbackMode || "message";
 
-    if (!savedTournament) {
-        showTournamentSaveMessage("Saved tournament not found.", "error");
+    try {
+        const response = await fetch(`${tournamentApiUrl}/${tournamentId}`);
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || "Saved tournament not found.");
+        }
+
+        // Merge the API record with any older local cache so we can restore complete saved state.
+        const apiTournament = normalizeTournamentRecord(responseData.tournament);
+        const savedTournament = mergeTournamentRecords(
+            apiTournament,
+            savedTournamentsCache.find((tournament) => tournament.id === tournamentId || tournament._id === tournamentId)
+                || getSavedTournamentFromStorage(tournamentId)
+        );
+
+        if (!savedTournament) {
+            showToast("Saved tournament snapshot is unavailable.", "error");
+            return;
+        }
+
+        // Restore flow: hydrate the frontend state first, then re-render players,
+        // teams, fixtures, bracket, and statistics from the saved MongoDB snapshot.
+        restoreTournamentSnapshot({
+            ...savedTournament,
+            name: savedTournament.name || apiTournament?.name || "",
+            sport: savedTournament.sport || apiTournament?.sport || matchConfig.sport
+        });
+        if (feedbackMode === "toast") {
+            showToast(`Loaded "${apiTournament?.name || savedTournament.name}".`, "success");
+        } else {
+            showTournamentSaveMessage(`Loaded "${apiTournament?.name || savedTournament.name}".`, "success");
+        }
+        return true;
+    } catch (error) {
+        console.error("Tournament load error:", error);
+        if (feedbackMode === "toast") {
+            showToast(error.message || "Unable to load saved tournament.", "error");
+        } else {
+            showTournamentSaveMessage(error.message || "Unable to load saved tournament.", "error");
+        }
+        return false;
+    }
+}
+
+async function loadTournament(tournamentId) {
+    await loadTournamentById(tournamentId);
+}
+
+async function loadSharedTournamentFromUrl() {
+    const tournamentId = new URL(window.location.href).searchParams.get("tournament");
+
+    if (!tournamentId) {
         return;
     }
 
-    players = Array.isArray(savedTournament.players)
-        ? savedTournament.players.map(normalizePlayer)
-        : [];
-    savePlayers();
-    renderPlayers();
-
-    teamNames = savedTournament.teamNames || {};
-    applyLoadedMatchConfig({
-        ...savedTournament.matchConfig,
-        name: savedTournament.name
-    });
-
-    latestGeneratedTeams = cloneTournamentData(savedTournament.teams || []);
-    latestTournament = cloneTournamentData(savedTournament.tournamentState || null);
-
-    if (latestGeneratedTeams.length > 0) {
-        renderTeams(latestGeneratedTeams, { preserveTournamentState: true });
-    } else {
-        clearTeams();
-    }
-
-    renderStatisticsDashboard();
-    showTournamentSaveMessage(`Loaded "${savedTournament.name}".`, "success");
+    // Automatic tournament loading: shared URLs carry the MongoDB id, and we
+    // hydrate the full saved state as soon as the app opens.
+    await loadTournamentById(tournamentId, { feedbackMode: "toast" });
 }
 
-function deleteTournament(tournamentId) {
-    const savedTournaments = loadSavedTournaments();
-    const nextTournaments = savedTournaments.filter((tournament) => tournament.id !== tournamentId);
+async function deleteTournament(tournamentId) {
+    const tournamentToDelete = savedTournamentsCache.find((tournament) => (
+        tournament.id === tournamentId || tournament._id === tournamentId
+    )) || getSavedTournamentFromStorage(tournamentId);
 
-    if (nextTournaments.length === savedTournaments.length) {
-        showTournamentSaveMessage("Saved tournament not found.", "error");
+    if (!tournamentToDelete) {
+        showToast("Saved tournament not found.", "error");
         return;
     }
 
-    saveSavedTournaments(nextTournaments);
-    renderSavedTournaments();
-    showTournamentSaveMessage("Tournament deleted.", "success");
+    const backup = cloneTournamentData(tournamentToDelete);
+
+    try {
+        const response = await fetch(`${tournamentApiUrl}/${tournamentId}`, {
+            method: "DELETE"
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || "Saved tournament not found.");
+        }
+
+        console.log("Tournament deleted from API");
+
+        deletedTournamentBackup = backup;
+        removeSavedTournamentFromStorage(tournamentId);
+        syncSavedTournamentCache(savedTournamentsCache.filter((tournament) => (
+            tournament.id !== tournamentId && tournament._id !== tournamentId
+        )));
+        await renderSavedTournaments();
+        showToast("Tournament deleted", "success", {
+            duration: 5000,
+            actionLabel: "Undo",
+            actionHandler: () => {
+                void restoreDeletedTournament();
+            }
+        });
+    } catch (error) {
+        console.error("Tournament delete error:", error);
+        showToast(error.message || "Unable to delete saved tournament.", "error");
+    }
 }
 
-function renderSavedTournaments() {
+async function restoreDeletedTournament() {
+    if (!deletedTournamentBackup) {
+        return;
+    }
+
+    const backup = cloneTournamentData(deletedTournamentBackup);
+
+    try {
+        const response = await fetch(tournamentApiUrl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                ...backup,
+                id: undefined
+            })
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || "Unable to restore tournament.");
+        }
+
+        const restoredTournament = normalizeTournamentRecord(responseData.tournament);
+        const restoredLocalTournament = {
+            ...backup,
+            id: restoredTournament?.id || backup.id,
+            _id: restoredTournament?.id || backup._id,
+            savedAt: restoredTournament?.createdAt || backup.savedAt || new Date().toISOString()
+        };
+
+        upsertSavedTournamentToStorage(restoredLocalTournament);
+        deletedTournamentBackup = null;
+        await renderSavedTournaments();
+        showToast("Tournament restored", "success");
+    } catch (error) {
+        console.error("Tournament restore error:", error);
+        showToast(error.message || "Unable to restore tournament.", "error");
+    }
+}
+
+function openDeleteConfirmation(tournamentId) {
+    const tournament = savedTournamentsCache.find((entry) => entry.id === tournamentId || entry._id === tournamentId)
+        || getSavedTournamentFromStorage(tournamentId);
+    const modalElements = getModalElements();
+
+    if (!modalElements.deleteConfirmModal || !modalElements.deleteConfirmMessage) {
+        void deleteTournament(tournamentId);
+        return;
+    }
+
+    pendingDeleteTournament = tournament || { id: tournamentId, _id: tournamentId, name: "this tournament" };
+    modalElements.deleteConfirmMessage.textContent = `Are you sure you want to delete "${pendingDeleteTournament.name}"? This action cannot be undone.`;
+    openModal(modalElements.deleteConfirmModal);
+}
+
+function closeDeleteConfirmation() {
+    pendingDeleteTournament = null;
+    closeModal(getModalElements().deleteConfirmModal);
+}
+
+function confirmDeleteTournament() {
+    if (!pendingDeleteTournament) {
+        closeDeleteConfirmation();
+        return;
+    }
+
+    const tournamentId = pendingDeleteTournament.id || pendingDeleteTournament._id;
+    pendingDeleteTournament = null;
+    closeDeleteConfirmation();
+    void deleteTournament(tournamentId);
+}
+
+function openEditTournamentModal(tournamentId) {
+    const tournament = savedTournamentsCache.find((entry) => entry.id === tournamentId || entry._id === tournamentId)
+        || getSavedTournamentFromStorage(tournamentId);
+    const modalElements = getModalElements();
+
+    if (!tournament || !modalElements.editTournamentModal) {
+        showToast("Saved tournament not found.", "error");
+        return;
+    }
+
+    activeEditTournament = cloneTournamentData(tournament);
+
+    if (modalElements.editTournamentNameInput) {
+        modalElements.editTournamentNameInput.value = activeEditTournament.name || "";
+    }
+
+    if (modalElements.editMatchTypeSelect) {
+        modalElements.editMatchTypeSelect.value = activeEditTournament.matchType
+            || activeEditTournament.matchConfig?.matchType
+            || "Friendly";
+    }
+
+    if (modalElements.editSportInput) {
+        modalElements.editSportInput.value = formatSportName(activeEditTournament.sport || activeEditTournament.matchConfig?.sport || "custom");
+    }
+
+    if (modalElements.editPlayersPerTeamInput) {
+        modalElements.editPlayersPerTeamInput.value = String(
+            activeEditTournament.playersPerTeam
+            || activeEditTournament.matchConfig?.customPlayersPerTeam
+            || activeEditTournament.matchConfig?.teamSize
+            || (activeEditTournament.teams?.[0]?.players?.length ?? "")
+        );
+    }
+
+    if (modalElements.editTeamCountInput) {
+        modalElements.editTeamCountInput.value = String(
+            activeEditTournament.numberOfTeams
+            || activeEditTournament.matchConfig?.customTeamCount
+            || activeEditTournament.matchConfig?.teamCount
+            || (Array.isArray(activeEditTournament.teams) ? activeEditTournament.teams.length : "")
+        );
+    }
+
+    openModal(modalElements.editTournamentModal);
+}
+
+function closeEditTournamentModal() {
+    activeEditTournament = null;
+    closeModal(getModalElements().editTournamentModal);
+}
+
+async function saveEditedTournament(event) {
+    event.preventDefault();
+
+    if (!activeEditTournament) {
+        return;
+    }
+
+    const modalElements = getModalElements();
+    const tournamentName = modalElements.editTournamentNameInput?.value.trim() || "";
+    const matchType = modalElements.editMatchTypeSelect?.value || "Friendly";
+
+    if (!tournamentName) {
+        showToast("Tournament name is required.", "error");
+        return;
+    }
+
+    try {
+        const response = await fetch(`${tournamentApiUrl}/${activeEditTournament.id}`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                name: tournamentName,
+                matchType
+            })
+        });
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            throw new Error(responseData.message || "Unable to save tournament changes.");
+        }
+
+        const updatedApiTournament = normalizeTournamentRecord(responseData.tournament);
+        const localTournament = getSavedTournamentFromStorage(activeEditTournament.id) || cloneTournamentData(activeEditTournament);
+        const updatedLocalTournament = {
+            ...localTournament,
+            name: updatedApiTournament?.name || tournamentName,
+            matchType,
+            matchConfig: {
+                ...(localTournament.matchConfig || {}),
+                matchType
+            },
+            savedAt: localTournament.savedAt || updatedApiTournament?.createdAt || new Date().toISOString(),
+            id: updatedApiTournament?.id || localTournament.id,
+            _id: updatedApiTournament?.id || localTournament._id
+        };
+
+        upsertSavedTournamentToStorage(updatedLocalTournament);
+        activeEditTournament = null;
+        await renderSavedTournaments();
+        closeEditTournamentModal();
+        showToast("Tournament updated", "success");
+    } catch (error) {
+        console.error("Tournament update error:", error);
+        showToast(error.message || "Unable to update tournament.", "error");
+    }
+}
+
+function handleManagePlayersComingSoon() {
+    showToast("Player management coming soon", "info");
+}
+
+function buildTournamentShareUrl(tournamentId) {
+    const shareUrl = new URL(window.location.href);
+    shareUrl.searchParams.set("tournament", tournamentId);
+
+    // Share link generation: keep the current route and append the MongoDB id
+    // so someone else can open the exact saved tournament state.
+    return shareUrl.toString();
+}
+
+async function copyShareLinkToClipboard(tournamentId) {
+    const shareUrl = buildTournamentShareUrl(tournamentId);
+
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        return shareUrl;
+    }
+
+    const fallbackInput = document.createElement("textarea");
+    fallbackInput.value = shareUrl;
+    fallbackInput.setAttribute("readonly", "true");
+    fallbackInput.style.position = "fixed";
+    fallbackInput.style.opacity = "0";
+    document.body.appendChild(fallbackInput);
+    fallbackInput.select();
+    document.execCommand("copy");
+    fallbackInput.remove();
+    return shareUrl;
+}
+
+async function handleShareTournament(tournamentId) {
+    try {
+        await copyShareLinkToClipboard(tournamentId);
+        showToast("Share link copied!", "success");
+    } catch (error) {
+        console.error("Share link copy error:", error);
+        showToast("Unable to copy share link.", "error");
+    }
+}
+
+async function renderSavedTournaments() {
     const { savedTournamentsList, savedTournamentsEmptyState } = getAppElements();
 
     if (!savedTournamentsList || !savedTournamentsEmptyState) {
         return;
     }
 
-    const savedTournaments = loadSavedTournaments();
+    savedTournamentsEmptyState.textContent = "Loading saved tournaments...";
+    savedTournamentsEmptyState.classList.remove("hidden");
+    savedTournamentsList.innerHTML = "";
+
+    const savedTournaments = await loadSavedTournaments();
+    syncSavedTournamentCache(savedTournaments);
 
     savedTournamentsList.innerHTML = savedTournaments.map((tournament) => `
         <article class="saved-tournament-card">
             <div class="saved-tournament-card__top">
                 <div>
                     <h3 class="saved-tournament-card__title">${tournament.name}</h3>
-                    <div class="saved-tournament-card__date">${formatSavedDate(tournament.savedAt)}</div>
+                    <div class="saved-tournament-card__date">${formatSavedDate(tournament.savedAt || tournament.createdAt)}</div>
                 </div>
                 <span class="config-pill">${formatSportName(tournament.sport || tournament.matchConfig?.sport || "custom")}</span>
             </div>
@@ -1906,11 +2538,15 @@ function renderSavedTournaments() {
             </div>
             <div class="saved-tournament-card__actions">
                 <button class="btn btn-primary" type="button" data-saved-action="load" data-tournament-id="${tournament.id}">Load</button>
+                <button class="btn btn-secondary" type="button" data-saved-action="edit" data-tournament-id="${tournament.id}">Edit</button>
+                <button class="btn btn-secondary" type="button" data-saved-action="share" data-tournament-id="${tournament.id}">Share</button>
+                <button class="btn btn-secondary" type="button" data-saved-action="manage-players" data-tournament-id="${tournament.id}">Manage Players</button>
                 <button class="btn btn-danger" type="button" data-saved-action="delete" data-tournament-id="${tournament.id}">Delete</button>
             </div>
         </article>
     `).join("");
 
+    savedTournamentsEmptyState.textContent = savedTournamentsEmptyMessage;
     savedTournamentsEmptyState.classList.toggle("hidden", savedTournaments.length > 0);
 }
 
@@ -2620,7 +3256,7 @@ let swappedPlayer1Id = null;
 let swappedPlayer2Id = null;
 
 // Toast Notification System
-function showToast(message, type = "info") {
+function showToast(message, type = "info", options = {}) {
     let container = document.getElementById("toast-container");
     if (!container) {
         container = document.createElement("div");
@@ -2636,9 +3272,14 @@ function showToast(message, type = "info") {
     if (type === "success") icon = "✨";
     if (type === "error") icon = "⚠️";
 
+    const actionMarkup = options.actionLabel
+        ? `<button class="toast__action" type="button">${options.actionLabel}</button>`
+        : "";
+
     toast.innerHTML = `
         <span class="toast__icon" aria-hidden="true">${icon}</span>
         <span class="toast__text">${message}</span>
+        ${actionMarkup}
     `;
 
     container.appendChild(toast);
@@ -2648,8 +3289,14 @@ function showToast(message, type = "info") {
         toast.classList.add("toast--visible");
     });
 
-    // Remove toast after 3 seconds
-    window.setTimeout(() => {
+    const duration = typeof options.duration === "number" ? options.duration : 3000;
+    let toastRemoved = false;
+    const removeToast = () => {
+        if (toastRemoved) {
+            return;
+        }
+
+        toastRemoved = true;
         toast.classList.remove("toast--visible");
         toast.addEventListener("transitionend", () => {
             toast.remove();
@@ -2657,7 +3304,17 @@ function showToast(message, type = "info") {
                 container.remove();
             }
         });
-    }, 3000);
+    };
+
+    if (options.actionLabel && typeof options.actionHandler === "function") {
+        const actionButton = toast.querySelector(".toast__action");
+        actionButton?.addEventListener("click", () => {
+            options.actionHandler();
+            removeToast();
+        });
+    }
+
+    window.setTimeout(removeToast, duration);
 }
 
 // Clear mobile select highlights
@@ -3166,6 +3823,39 @@ function bindEvents() {
     });
     importCsvButton.addEventListener("click", handleCsvImport);
     toggleInstructionsButton.addEventListener("click", toggleInstructions);
+
+    const modalElements = getModalElements();
+    modalElements.deleteConfirmCancelButton?.addEventListener("click", closeDeleteConfirmation);
+    modalElements.deleteConfirmDeleteButton?.addEventListener("click", confirmDeleteTournament);
+    modalElements.editTournamentForm?.addEventListener("submit", saveEditedTournament);
+    modalElements.managePlayersButton?.addEventListener("click", handleManagePlayersComingSoon);
+
+    document.querySelectorAll("[data-modal-close]").forEach((trigger) => {
+        trigger.addEventListener("click", () => {
+            if (trigger.dataset.modalClose === "delete") {
+                closeDeleteConfirmation();
+            }
+
+            if (trigger.dataset.modalClose === "edit") {
+                closeEditTournamentModal();
+            }
+        });
+    });
+
+    document.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape") {
+            return;
+        }
+
+        if (!document.getElementById("edit-tournament-modal")?.classList.contains("hidden")) {
+            closeEditTournamentModal();
+        }
+
+        if (!document.getElementById("delete-confirm-modal")?.classList.contains("hidden")) {
+            closeDeleteConfirmation();
+        }
+    });
+
     savedTournamentsList.addEventListener("click", (event) => {
         const actionButton = event.target.closest("[data-saved-action]");
 
@@ -3176,12 +3866,27 @@ function bindEvents() {
         const { savedAction, tournamentId } = actionButton.dataset;
 
         if (savedAction === "load") {
-            loadTournament(tournamentId);
+            void loadTournament(tournamentId);
+            return;
+        }
+
+        if (savedAction === "share") {
+            void handleShareTournament(tournamentId);
+            return;
+        }
+
+        if (savedAction === "edit") {
+            openEditTournamentModal(tournamentId);
+            return;
+        }
+
+        if (savedAction === "manage-players") {
+            handleManagePlayersComingSoon();
             return;
         }
 
         if (savedAction === "delete") {
-            deleteTournament(tournamentId);
+            openDeleteConfirmation(tournamentId);
         }
     });
 
@@ -3218,7 +3923,8 @@ function initializeApp() {
     updateRatingDisplay();
     updateImportButtonState();
     renderPlayers();
-    renderSavedTournaments();
+    void renderSavedTournaments();
+    void loadSharedTournamentFromUrl();
     clearTournamentSaveMessage();
     clearTeams();
     renderStatisticsDashboard();

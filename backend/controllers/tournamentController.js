@@ -20,7 +20,7 @@ async function getAllTournaments(req, res) {
 
 async function createTournament(req, res) {
     try {
-        // We save the new tournament in MongoDB instead of pushing it into the array.
+        // The frontend now sends the full tournament snapshot in req.body, so MongoDB stores the complete state.
         const tournament = await Tournament.create(req.body);
 
         res.status(201).json({
@@ -63,7 +63,7 @@ async function getTournamentById(req, res) {
 
 async function updateTournament(req, res) {
     try {
-        // `findByIdAndUpdate()` finds one MongoDB document by id and updates it.
+        // `findByIdAndUpdate()` updates the saved tournament while keeping the rest of the snapshot intact.
         // `new: true` returns the updated version instead of the old one.
         const tournament = await Tournament.findByIdAndUpdate(req.params.id, req.body, {
             new: true,
