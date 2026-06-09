@@ -1,6 +1,6 @@
 const storageKey = "players";
 const tournamentStorageKey = "saved-tournaments";
-const tournamentApiUrl = "http://localhost:5000/api/tournaments";
+const tournamentApiUrl = "https://tournamenthub-uyda.onrender.com/api/tournaments";
 const savedTournamentsEmptyMessage = "No tournaments saved yet. Generate teams, add a name, and save one here.";
 const tournamentMatchTypes = ["Friendly", "Knockout", "League"];
 const sportRules = {
@@ -2103,7 +2103,7 @@ async function saveTournament() {
     };
 
     try {
-        const response = await fetch("http://localhost:5000/api/tournaments", {
+        const response = await fetch("https://tournamenthub-uyda.onrender.com/api/tournaments", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
